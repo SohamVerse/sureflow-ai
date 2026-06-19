@@ -83,8 +83,8 @@ function ApprovalCard({ item, onApprove, onReject }: { item: any; onApprove: () 
         </div>
 
         {/* Confidence Ring */}
-        {item.confidence_score != null && (
-          <ConfidenceRing score={item.confidence_score} color={riskColor} />
+        {item.confidence != null && (
+          <ConfidenceRing score={item.confidence} color={riskColor} />
         )}
       </div>
 

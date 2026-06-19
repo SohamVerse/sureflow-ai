@@ -37,7 +37,7 @@ class MemoryStore:
                 agent_id=agent_id,
                 task=task,
                 output_summary=_summarize_output(output),
-                confidence=output.get("confidence_score", 50),
+                confidence=output.get("confidence", 50),
                 risk_level=output.get("risk_level", "medium"),
             ))
             db.commit()
@@ -185,7 +185,7 @@ def _summarize_output(output: dict) -> str:
     parts = []
     if r := output.get("recommendation"):
         parts.append(f"Rec: {str(r)[:100]}")
-    if c := output.get("confidence_score"):
+    if c := output.get("confidence"):
         parts.append(f"Confidence: {c}%")
     if r := output.get("risk_level"):
         parts.append(f"Risk: {r}")

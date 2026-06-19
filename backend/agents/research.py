@@ -16,6 +16,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -188,5 +189,8 @@ Now conduct your full analysis and produce the research intelligence JSON."""
                 "error": "Could not parse Research JSON output",
             }
 
-    memory.save_episodic("RESEARCH", instruction, result)
-    return result
+    brain_output = parse_brain_output(result, "RESEARCH")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("RESEARCH", instruction, flat)
+    return flat

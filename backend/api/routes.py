@@ -91,7 +91,7 @@ def agent_status():
 
 def _extract_approval_tier(brain_output: dict) -> str:
     """Determine approval tier from V2 brain output confidence and risk."""
-    confidence = brain_output.get("confidence_score", 50)
+    confidence = brain_output.get("confidence", 50)
     risk = brain_output.get("risk_level", "medium")
     if risk in ("high", "critical") or confidence < 40:
         return "CEO_APPROVAL"
@@ -151,11 +151,11 @@ async def trigger_pipeline(body: RunPipelineRequest):
                     platform=cmo.get("platform", "LinkedIn"),
                     stage=cmo.get("buying_stage", cmo.get("stage", "Awareness")),
                     meta_data=cmo,
-                    confidence_score=cmo.get("confidence_score"),
+                    confidence=cmo.get("confidence"),
                     risk_score=risk_score,
                     risk_level=cmo.get("risk_level"),
                     reasoning=cmo.get("reasoning", ""),
-                    alternatives_considered=cmo.get("alternatives_considered", []),
+                    alternatives=cmo.get("alternatives", []),
                     approval_tier=approval_tier,
                     debate_log=debate_log,
                     constitution_violations=constitution_violations,
@@ -176,10 +176,10 @@ async def trigger_pipeline(body: RunPipelineRequest):
                     platform="Internal",
                     stage="Research",
                     meta_data=res,
-                    confidence_score=res.get("confidence_score"),
+                    confidence=res.get("confidence"),
                     risk_level=res.get("risk_level"),
                     reasoning=res.get("reasoning", ""),
-                    alternatives_considered=res.get("alternatives_considered", []),
+                    alternatives=res.get("alternatives", []),
                     approval_tier=approval_tier,
                     approval_required=False,
                 )
@@ -196,7 +196,7 @@ async def trigger_pipeline(body: RunPipelineRequest):
                     platform="Internal",
                     stage="Risk Assessment",
                     meta_data=risk_output,
-                    confidence_score=risk_output.get("confidence_score"),
+                    confidence=risk_output.get("confidence"),
                     risk_score=risk_score,
                     risk_level=risk_output.get("risk_level"),
                     reasoning=risk_output.get("reasoning", ""),

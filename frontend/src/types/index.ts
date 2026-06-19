@@ -16,12 +16,12 @@ export interface PipelineItem {
   platform: string;
   stage: string;
   meta_data: Record<string, unknown>;
-  // V2 Brain Decision Framework fields
-  confidence_score: number | null;
+  // Brain Decision Framework fields
+  confidence: number | null;
   risk_score: number | null;
   risk_level: RiskLevel | null;
   reasoning: string | null;
-  alternatives_considered: string[];
+  alternatives: string[];
   approval_tier: ApprovalTier | null;
   debate_log: string[];
   constitution_violations: string[];
@@ -90,8 +90,8 @@ export interface AgentNodeData {
   config?: Record<string, unknown>;
   status?: 'idle' | 'working' | 'running' | 'done' | 'error';  // V2: unified status
   output?: Record<string, unknown>;
-  // V2 Decision Framework fields (for displaying in nodes)
-  confidence_score?: number;
+  // Decision Framework fields (for displaying in nodes)
+  confidence?: number;
   risk_level?: RiskLevel;
 }
 

@@ -128,9 +128,9 @@ export default function CommandCenter() {
                       <span className="badge badge-pending">{item.agent_type}</span>
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.platform}</span>
                     </div>
-                    {item.confidence_score && (
+                    {item.confidence && (
                       <span className="text-xs font-mono" style={{ color: '#f59e0b' }}>
-                        Conf: {item.confidence_score}%
+                        Conf: {item.confidence}%
                       </span>
                     )}
                   </div>

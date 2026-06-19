@@ -61,12 +61,12 @@ def ceo_node(state: AgentState) -> AgentState:
     print(f"[CEO 🧠] Analyzing: {state['goal'][:80]}...")
     try:
         plan = ceo_analyze(state["goal"])
-        print(f"[CEO 🧠] Confidence: {plan.get('confidence_score', '?')}% | Risk: {plan.get('risk_level', '?')}")
+        print(f"[CEO 🧠] Confidence: {plan.get('confidence', '?')}% | Risk: {plan.get('risk_level', '?')}")
         return {
             "ceo_plan": plan,
             "completed_agents": ["CEO"],
             "messages": [AIMessage(content=f"CEO Plan: {json.dumps(plan)}")],
-            "approval_required": plan.get("confidence_score", 100) < 50,
+            "approval_required": plan.get("confidence", 100) < 50,
         }
     except Exception as e:
         return {
@@ -93,7 +93,7 @@ def cmo_node(state: AgentState) -> AgentState:
         violations = constitution.validate(output, agent_id="CMO")
         violation_msgs = [f"CMO: {constitution.summarize([v])}" for v in violations if v.severity == "blocker"]
 
-        print(f"[CMO 🎨] Confidence: {output.get('confidence_score', '?')}% | Reach: {output.get('estimated_reach', '?')}")
+        print(f"[CMO 🎨] Confidence: {output.get('confidence', '?')}% | Reach: {output.get('estimated_reach', '?')}")
         return {
             "cmo_output": output,
             "completed_agents": ["CMO"],
@@ -119,7 +119,7 @@ def research_node(state: AgentState) -> AgentState:
     print(f"[RESEARCH 🔬] Analyzing: {instruction[:60]}...")
     try:
         output = research_analyze(instruction)
-        print(f"[RESEARCH 🔬] Confidence: {output.get('confidence_score', '?')}% | Trends found: {len(output.get('key_trends', []))}")
+        print(f"[RESEARCH 🔬] Confidence: {output.get('confidence', '?')}% | Trends found: {len(output.get('key_trends', []))}")
         return {
             "research_output": output,
             "completed_agents": ["RESEARCH"],

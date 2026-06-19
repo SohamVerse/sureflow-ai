@@ -47,12 +47,12 @@ function AgentNode({ data, selected }: { data: AgentNodeData; selected: boolean 
       <Handle type="target" position={Position.Top} className="w-2 h-2 opacity-0" />
       
       {/* V2: Confidence / Risk Overlay */}
-      {(data.confidence_score != null || data.risk_level != null) && (
+      {(data.confidence != null || data.risk_level != null) && (
         <div className="absolute -top-3 -right-3 flex flex-col gap-1 z-10">
-          {data.confidence_score != null && (
+          {data.confidence != null && (
             <div className="flex items-center justify-center w-8 h-8 rounded-full shadow-lg text-[10px] font-bold" 
                  style={{ background: '#222', border: `2px solid ${color}`, color: '#fff' }}>
-              {data.confidence_score}%
+              {data.confidence}%
             </div>
           )}
           {data.risk_level != null && (

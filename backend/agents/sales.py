@@ -18,6 +18,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -213,8 +214,11 @@ Score and qualify this lead now."""
                 "error": "Could not parse SDR JSON output",
             }
 
-    memory.save_episodic("SDR", str(lead_data), result)
-    return result
+    brain_output = parse_brain_output(result, "SDR")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("SDR", str(lead_data), flat)
+    return flat
 
 
 def ae_qualify_lead(lead_data: dict, conversation_history: str = "") -> dict:
@@ -277,5 +281,8 @@ Qualify this lead and produce your full deal analysis."""
                 "error": "Could not parse AE JSON output",
             }
 
-    memory.save_episodic("AE", str(lead_data), result)
-    return result
+    brain_output = parse_brain_output(result, "AE")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("AE", str(lead_data), flat)
+    return flat

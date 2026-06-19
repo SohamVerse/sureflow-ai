@@ -12,9 +12,13 @@ The Constitution covers:
   - Approval policies (what triggers human review)
 """
 from __future__ import annotations
+import hashlib
 import json
 from dataclasses import dataclass, field, asdict
 from typing import Optional
+
+from core.database import SessionLocal
+from models.constitution import ConstitutionVersion
 
 
 # ─── Default Company Constitution ─────────────────────────────────────────────
@@ -54,6 +58,41 @@ DEFAULT_CONSTITUTION = {
 }
 
 
+# ─── Persistence (Immutable, Versioned Constitution) ──────────────────────────
+
+def _load_active_constitution() -> dict:
+    """
+    Load the active constitution ruleset from Postgres, seeding version 1 from
+    DEFAULT_CONSTITUTION if the table is empty. Falls back to DEFAULT_CONSTITUTION
+    if the database isn't reachable yet (e.g. migrations not applied).
+    """
+    try:
+        db = SessionLocal()
+        try:
+            active = (
+                db.query(ConstitutionVersion)
+                .filter(ConstitutionVersion.active == True)  # noqa: E712
+                .order_by(ConstitutionVersion.version.desc())
+                .first()
+            )
+            if active:
+                return active.content
+            content_json = json.dumps(DEFAULT_CONSTITUTION, sort_keys=True)
+            db.add(ConstitutionVersion(
+                version=1,
+                sha256=hashlib.sha256(content_json.encode()).hexdigest(),
+                content=DEFAULT_CONSTITUTION,
+                approved_by="system",
+                active=True,
+            ))
+            db.commit()
+            return DEFAULT_CONSTITUTION
+        finally:
+            db.close()
+    except Exception:
+        return DEFAULT_CONSTITUTION
+
+
 # ─── Constitution Violation ────────────────────────────────────────────────────
 
 @dataclass
@@ -78,7 +117,7 @@ class ConstitutionLayer:
     """
 
     def __init__(self, custom_constitution: Optional[dict] = None):
-        self.rules = custom_constitution or DEFAULT_CONSTITUTION
+        self.rules = custom_constitution or _load_active_constitution()
 
     def validate(self, output: dict, agent_id: str = "") -> list[ConstitutionViolation]:
         """

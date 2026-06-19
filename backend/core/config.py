@@ -11,10 +11,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://sureflow_user:sureflow_password@localhost:5432/sureflow_db"
 
-    # ChromaDB
-    CHROMA_HOST: str = "localhost"
-    CHROMA_PORT: int = 8001
-
     # Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"
 

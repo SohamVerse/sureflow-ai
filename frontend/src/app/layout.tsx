@@ -1,0 +1,38 @@
+import type { Metadata } from 'next';
+import './globals.css';
+import { Sidebar } from '@/components/layout/Sidebar';
+
+export const metadata: Metadata = {
+  title: 'Sureflow Agentic OS',
+  description: 'Local multi-agent company management software powered by Ollama LLMs',
+};
+
+import { Toaster } from 'react-hot-toast';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      </head>
+      <body>
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
+        <Toaster position="bottom-right" toastOptions={{
+          style: {
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+            fontSize: '14px',
+          }
+        }} />
+      </body>
+    </html>
+  );
+}

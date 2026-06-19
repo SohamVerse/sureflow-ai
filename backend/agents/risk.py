@@ -22,6 +22,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -186,5 +187,8 @@ Conduct your full risk analysis and produce the JSON output."""
         result["go_no_go"] = "NO_GO"
         result["risk_level"] = "critical"
 
-    memory.save_episodic("RISK", instruction or "risk_analysis", result)
-    return result
+    brain_output = parse_brain_output(result, "RISK")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("RISK", instruction or "risk_analysis", flat)
+    return flat

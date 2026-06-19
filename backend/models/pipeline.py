@@ -39,12 +39,12 @@ class PipelineItem(Base):
     stage = Column(String(100))
     meta_data = Column(JSON, default=dict)
 
-    # V2: Brain Decision Framework fields
-    confidence_score = Column(Integer, nullable=True)      # 0-100
+    # Brain Decision Framework fields
+    confidence = Column(Integer, nullable=True)            # 0-100
     risk_score = Column(Integer, nullable=True)            # 0-100 (from Risk Brain)
     risk_level = Column(String(20), nullable=True)         # low|medium|high|critical
     reasoning = Column(Text, nullable=True)                # Agent's internal reasoning
-    alternatives_considered = Column(JSON, default=list)   # Other options evaluated
+    alternatives = Column(JSON, default=list)              # Other options evaluated
     approval_tier = Column(String(30), nullable=True)      # AUTO_APPROVE|MANAGER|CEO
     debate_log = Column(JSON, default=list)                # Debate Engine notes
     constitution_violations = Column(JSON, default=list)   # Any violations detected
@@ -68,12 +68,12 @@ class PipelineItem(Base):
             "platform": self.platform,
             "stage": self.stage,
             "meta_data": self.meta_data,
-            # V2 Brain fields
-            "confidence_score": self.confidence_score,
+            # Brain Decision Framework fields
+            "confidence": self.confidence,
             "risk_score": self.risk_score,
             "risk_level": self.risk_level,
             "reasoning": self.reasoning,
-            "alternatives_considered": self.alternatives_considered or [],
+            "alternatives": self.alternatives or [],
             "approval_tier": self.approval_tier,
             "debate_log": self.debate_log or [],
             "constitution_violations": self.constitution_violations or [],

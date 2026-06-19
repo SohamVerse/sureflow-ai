@@ -20,6 +20,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -162,5 +163,8 @@ Now craft the content strategy and produce the full JSON output."""
                 "error": "Could not parse CMO JSON output",
             }
 
-    memory.save_episodic("CMO", instruction, result)
-    return result
+    brain_output = parse_brain_output(result, "CMO")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("CMO", instruction, flat)
+    return flat

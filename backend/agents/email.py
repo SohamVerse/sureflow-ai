@@ -13,6 +13,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -162,5 +163,8 @@ Draft the full email strategy and produce the JSON output."""
                 "error": "Could not parse Email JSON output",
             }
 
-    memory.save_episodic("EMAIL", str(lead_data), result)
-    return result
+    brain_output = parse_brain_output(result, "EMAIL")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
+    memory.save_episodic("EMAIL", str(lead_data), flat)
+    return flat

@@ -21,7 +21,7 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.llm import get_llm
-from core.brain import BaseBrain, BrainOutput
+from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
 
@@ -171,6 +171,10 @@ Now perform your CEO analysis and produce the routing plan JSON."""
                 "error": "Could not parse CEO JSON output",
             }
 
+    # Normalize to the canonical BrainOutput contract
+    brain_output = parse_brain_output(result, "CEO")
+    flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
+
     # Persist to memory
-    memory.save_episodic("CEO", goal, result)
-    return result
+    memory.save_episodic("CEO", goal, flat)
+    return flat

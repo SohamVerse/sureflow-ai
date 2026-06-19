@@ -1,22 +1,31 @@
 """
 Embeddings pipeline for the Knowledge Vault.
-Handles ingestion of documents into ChromaDB collections using Ollama embeddings.
+Handles ingestion of documents into pgvector-backed collections using Ollama embeddings.
 """
 import hashlib
-import os
 from pathlib import Path
 from typing import Optional
 
-import chromadb
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
-from rag.chroma_client import get_chroma_client, VAULT_COLLECTIONS
 from core.config import settings
+from core.database import SessionLocal
+from models.vault import VaultDocument
+
+# Knowledge Vault collections matching the 6 synced folders
+VAULT_COLLECTIONS = {
+    "01-fintech-trends": "FinTech market trends and user engagement data",
+    "02-lms-insights": "LMS/EdTech platform benchmarks and content",
+    "03-icp-saas": "Ideal Customer Profile for Web/Mobile SaaS",
+    "04-revenue-generation": "Strategies for generating new revenue streams",
+    "05-social-media": "Recent social media trends and algorithm updates",
+    "06-brand-voice": "Brand voice for a premium software development agency",
+}
 
 
 def get_embeddings():
-    """Return the Ollama embeddings model (uses nomic-embed-text if available, else CEO model)."""
+    """Return the Ollama embeddings model (nomic-embed-text, 768 dims)."""
     return OllamaEmbeddings(
         base_url=settings.OLLAMA_BASE_URL,
         model="nomic-embed-text",
@@ -31,11 +40,9 @@ def _file_hash(path: str) -> str:
 
 def ingest_document(file_path: str, collection_name: str, metadata: Optional[dict] = None) -> dict:
     """
-    Load, chunk, embed, and store a document in the specified ChromaDB collection.
+    Load, chunk, embed, and store a document as pgvector rows in the given collection.
     Returns a summary of what was ingested.
     """
-    client = get_chroma_client()
-    collection = client.get_or_create_collection(collection_name)
     embedder = get_embeddings()
 
     path = Path(file_path)
@@ -54,25 +61,25 @@ def ingest_document(file_path: str, collection_name: str, metadata: Optional[dic
     splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
     chunks = splitter.split_documents(documents)
 
-    # Embed and store
     file_hash = _file_hash(file_path)
-    ids = [f"{file_hash}-{i}" for i in range(len(chunks))]
     texts = [chunk.page_content for chunk in chunks]
     embeddings = embedder.embed_documents(texts)
 
-    meta_list = []
-    for chunk in chunks:
-        m = {"source": str(path.name), "file_hash": file_hash}
-        if metadata:
-            m.update(metadata)
-        meta_list.append(m)
-
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        documents=texts,
-        metadatas=meta_list,
-    )
+    db = SessionLocal()
+    try:
+        for text, embedding in zip(texts, embeddings):
+            meta = {"source": path.name, "file_hash": file_hash}
+            if metadata:
+                meta.update(metadata)
+            db.add(VaultDocument(
+                collection=collection_name,
+                content=text,
+                embedding=embedding,
+                meta_data=meta,
+            ))
+        db.commit()
+    finally:
+        db.close()
 
     return {
         "collection": collection_name,
@@ -84,44 +91,46 @@ def ingest_document(file_path: str, collection_name: str, metadata: Optional[dic
 
 def query_collection(collection_name: str, query: str, n_results: int = 5) -> list[dict]:
     """
-    Query a ChromaDB collection with semantic search.
+    Semantic search over a collection via pgvector cosine distance.
     Returns list of matching document chunks with metadata.
     """
-    client = get_chroma_client()
     embedder = get_embeddings()
-
-    collection = client.get_or_create_collection(collection_name)
     query_embedding = embedder.embed_query(query)
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-        include=["documents", "metadatas", "distances"],
-    )
+    db = SessionLocal()
+    try:
+        distance = VaultDocument.embedding.cosine_distance(query_embedding)
+        rows = (
+            db.query(VaultDocument, distance.label("distance"))
+            .filter(VaultDocument.collection == collection_name)
+            .order_by(distance)
+            .limit(n_results)
+            .all()
+        )
+    finally:
+        db.close()
 
-    output = []
-    for doc, meta, distance in zip(
-        results["documents"][0],
-        results["metadatas"][0],
-        results["distances"][0],
-    ):
-        output.append({
-            "content": doc,
-            "metadata": meta,
-            "relevance_score": round(1 - distance, 4),
-        })
-
-    return output
+    return [
+        {
+            "content": doc.content,
+            "metadata": doc.meta_data,
+            "relevance_score": round(1 - dist, 4),
+        }
+        for doc, dist in rows
+    ]
 
 
 def get_vault_stats() -> dict:
     """Return document counts for all Knowledge Vault collections."""
-    client = get_chroma_client()
-    stats = {}
-    for collection_name in VAULT_COLLECTIONS.keys():
-        try:
-            col = client.get_or_create_collection(collection_name)
-            stats[collection_name] = col.count()
-        except Exception:
-            stats[collection_name] = 0
-    return stats
+    db = SessionLocal()
+    try:
+        stats = {}
+        for collection_name in VAULT_COLLECTIONS.keys():
+            stats[collection_name] = (
+                db.query(VaultDocument)
+                .filter(VaultDocument.collection == collection_name)
+                .count()
+            )
+        return stats
+    finally:
+        db.close()

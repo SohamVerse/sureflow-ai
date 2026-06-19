@@ -17,8 +17,7 @@ from core.constitution import constitution, DEFAULT_CONSTITUTION
 from models.pipeline import PipelineItem, PipelineStatus, AgentType
 from models.leads import Lead, LeadStatus, BuyingStage
 from agents.graph import run_pipeline, stream_custom_pipeline, stream_pipeline
-from rag.embeddings import ingest_document, get_vault_stats, query_collection
-from rag.chroma_client import VAULT_COLLECTIONS
+from rag.embeddings import ingest_document, get_vault_stats, query_collection, VAULT_COLLECTIONS
 
 router = APIRouter()
 

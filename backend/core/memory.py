@@ -2,20 +2,18 @@
 MemoryStore — Multi-tier memory system for CompanyOS V2 agents.
 
 Implements:
-  - Episodic Memory:   Past task runs and their outcomes (stored in DB / in-memory)
-  - Reflection Memory: Failures and lessons learned (prevents repeated mistakes)
-  - Semantic Memory:   ChromaDB RAG (existing 01-voice, 02-icp, etc. collections)
+  - Episodic Memory:   Past task runs and their outcomes (Postgres)
+  - Reflection Memory: Failures and lessons learned (Postgres)
+  - Semantic Memory:   pgvector RAG (existing 01-voice, 02-icp, etc. collections)
   - Working Memory:    Current LangGraph AgentState (handled by the graph itself)
-  - Procedural Memory: SOPs stored as documents in ChromaDB
+  - Procedural Memory: SOPs stored as documents in the pgvector Knowledge Vault
 """
 from __future__ import annotations
 import json
-from datetime import datetime, timezone
 from typing import Optional
 
-# In-process stores (replace with DB for production scale)
-_episodic_store: dict[str, list[dict]] = {}   # agent_id -> list of episode dicts
-_reflection_store: dict[str, list[dict]] = {}  # agent_id -> list of reflection dicts
+from core.database import SessionLocal
+from models.memory import EpisodicMemory, ReflectionMemory
 
 
 # ─── MemoryStore ──────────────────────────────────────────────────────────────
@@ -23,32 +21,52 @@ _reflection_store: dict[str, list[dict]] = {}  # agent_id -> list of reflection 
 class MemoryStore:
     """
     Unified interface to all memory tiers for a CompanyOS Brain.
-    
+
     Episodic  — "What did I do last time?"
     Reflection— "What went wrong, and what did I learn?"
-    Semantic  — ChromaDB RAG queries (delegated to rag.embeddings)
+    Semantic  — pgvector RAG queries (delegated to rag.embeddings)
     """
 
     # ── Episodic Memory ────────────────────────────────────────────────────────
 
     def save_episodic(self, agent_id: str, task: str, output: dict) -> None:
         """Persist an episode (task run + result) for the given agent."""
-        if agent_id not in _episodic_store:
-            _episodic_store[agent_id] = []
-        _episodic_store[agent_id].append({
-            "task": task,
-            "output_summary": _summarize_output(output),
-            "confidence": output.get("confidence_score", 50),
-            "risk": output.get("risk_level", "medium"),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-        # Cap at 50 episodes per agent
-        _episodic_store[agent_id] = _episodic_store[agent_id][-50:]
+        db = SessionLocal()
+        try:
+            db.add(EpisodicMemory(
+                agent_id=agent_id,
+                task=task,
+                output_summary=_summarize_output(output),
+                confidence=output.get("confidence_score", 50),
+                risk_level=output.get("risk_level", "medium"),
+            ))
+            db.commit()
+        finally:
+            db.close()
 
     def get_episodic(self, agent_id: str, limit: int = 5) -> list[dict]:
-        """Return the N most recent episodes for an agent."""
-        episodes = _episodic_store.get(agent_id, [])
-        return episodes[-limit:]
+        """Return the N most recent episodes for an agent, oldest first."""
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(EpisodicMemory)
+                .filter(EpisodicMemory.agent_id == agent_id)
+                .order_by(EpisodicMemory.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        finally:
+            db.close()
+        return [
+            {
+                "task": r.task,
+                "output_summary": r.output_summary,
+                "confidence": r.confidence,
+                "risk": r.risk_level,
+                "timestamp": r.created_at.isoformat(),
+            }
+            for r in reversed(rows)
+        ]
 
     # ── Reflection Memory ──────────────────────────────────────────────────────
 
@@ -57,36 +75,48 @@ class MemoryStore:
         Record a lesson learned from a failure or sub-optimal outcome.
         This feeds back into future executions to prevent repeated mistakes.
         """
-        if agent_id not in _reflection_store:
-            _reflection_store[agent_id] = []
-        _reflection_store[agent_id].append({
-            "task_context": task[:300],
-            "failure_reason": failure_reason,
-            "lesson": lesson,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-        _reflection_store[agent_id] = _reflection_store[agent_id][-30:]
+        db = SessionLocal()
+        try:
+            db.add(ReflectionMemory(
+                agent_id=agent_id,
+                task_context=task[:300],
+                failure_reason=failure_reason,
+                lesson=lesson,
+            ))
+            db.commit()
+        finally:
+            db.close()
 
     def get_reflection(self, agent_id: str, current_task: str = "") -> str:
         """
         Return a formatted string of relevant lessons from past failures.
         Used to inject wisdom into agent prompts before execution.
         """
-        reflections = _reflection_store.get(agent_id, [])
-        if not reflections:
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(ReflectionMemory)
+                .filter(ReflectionMemory.agent_id == agent_id)
+                .order_by(ReflectionMemory.created_at.desc())
+                .limit(5)
+                .all()
+            )
+        finally:
+            db.close()
+        if not rows:
             return "No past failures on record. Proceed with full diligence."
         lines = ["LESSONS FROM PAST FAILURES — review before acting:"]
-        for r in reflections[-5:]:
-            lines.append(f"• [{r['timestamp'][:10]}] Context: {r['task_context']}")
-            lines.append(f"  Failure: {r['failure_reason']}")
-            lines.append(f"  Lesson:  {r['lesson']}")
+        for r in reversed(rows):
+            lines.append(f"• [{r.created_at.date().isoformat()}] Context: {r.task_context}")
+            lines.append(f"  Failure: {r.failure_reason}")
+            lines.append(f"  Lesson:  {r.lesson}")
         return "\n".join(lines)
 
     # ── Semantic Memory (RAG) ──────────────────────────────────────────────────
 
     def query_semantic(self, collection: str, query: str, n_results: int = 3) -> list[dict]:
         """
-        Delegate to the existing ChromaDB RAG system.
+        Delegate to the pgvector-backed RAG system.
         Returns list of {content, metadata} dicts.
         """
         try:
@@ -119,11 +149,32 @@ class MemoryStore:
 
     def get_memory_summary(self, agent_id: str) -> dict:
         """Return a structured summary of all memory tiers for an agent."""
+        db = SessionLocal()
+        try:
+            episodic_count = db.query(EpisodicMemory).filter(EpisodicMemory.agent_id == agent_id).count()
+            reflection_count = db.query(ReflectionMemory).filter(ReflectionMemory.agent_id == agent_id).count()
+            reflection_rows = (
+                db.query(ReflectionMemory)
+                .filter(ReflectionMemory.agent_id == agent_id)
+                .order_by(ReflectionMemory.created_at.desc())
+                .limit(3)
+                .all()
+            )
+        finally:
+            db.close()
         return {
-            "episodic_count": len(_episodic_store.get(agent_id, [])),
-            "reflection_count": len(_reflection_store.get(agent_id, [])),
+            "episodic_count": episodic_count,
+            "reflection_count": reflection_count,
             "recent_episodes": self.get_episodic(agent_id, limit=3),
-            "recent_reflections": _reflection_store.get(agent_id, [])[-3:],
+            "recent_reflections": [
+                {
+                    "task_context": r.task_context,
+                    "failure_reason": r.failure_reason,
+                    "lesson": r.lesson,
+                    "timestamp": r.created_at.isoformat(),
+                }
+                for r in reversed(reflection_rows)
+            ],
         }
 
 

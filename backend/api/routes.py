@@ -100,6 +100,97 @@ def _extract_approval_tier(brain_output: dict) -> str:
     return "AUTO_APPROVE"
 
 
+def persist_pipeline_results(final_state: dict, goal: str) -> list[str]:
+    """
+    Persist CMO/Research/Risk outputs from a completed pipeline run as PipelineItems.
+    Shared by the interactive SSE endpoint (trigger_pipeline) and the
+    Temporal-scheduled cron workflow (workflows/activities.py).
+    """
+    db = SessionLocal()
+    created_items = []
+    try:
+        risk_output = final_state.get("risk_output", {})
+        risk_score = risk_output.get("risk_dimensions", {}).get("campaign_failure_probability")
+        debate_log = final_state.get("debate_log", [])
+        constitution_violations = final_state.get("constitution_violations", [])
+
+        # Persist CMO output
+        if final_state.get("cmo_output"):
+            cmo = final_state["cmo_output"]
+            approval_tier = _extract_approval_tier(cmo)
+            # Auto-veto if Risk Brain vetoed
+            is_vetoed = risk_output.get("veto_decision", {}).get("vetoed", False)
+            status = PipelineStatus.VETOED if is_vetoed else PipelineStatus.PENDING
+
+            item = PipelineItem(
+                agent_type=AgentType.CMO,
+                status=status,
+                title=cmo.get("hook", goal)[:499],
+                content=cmo.get("body", ""),
+                platform=cmo.get("platform", "LinkedIn"),
+                stage=cmo.get("buying_stage", cmo.get("stage", "Awareness")),
+                meta_data=cmo,
+                confidence=cmo.get("confidence"),
+                risk_score=risk_score,
+                risk_level=cmo.get("risk_level"),
+                reasoning=cmo.get("reasoning", ""),
+                alternatives=cmo.get("alternatives", []),
+                approval_tier=approval_tier,
+                debate_log=debate_log,
+                constitution_violations=constitution_violations,
+                approval_required=approval_tier != "AUTO_APPROVE" or is_vetoed,
+            )
+            db.add(item)
+            created_items.append("CMO content")
+
+        # Persist Research output
+        if final_state.get("research_output"):
+            res = final_state["research_output"]
+            approval_tier = _extract_approval_tier(res)
+            item = PipelineItem(
+                agent_type=AgentType.RESEARCH,
+                status=PipelineStatus.PENDING,
+                title=res.get("executive_summary", res.get("summary", goal))[:499],
+                content=json.dumps(res),
+                platform="Internal",
+                stage="Research",
+                meta_data=res,
+                confidence=res.get("confidence"),
+                risk_level=res.get("risk_level"),
+                reasoning=res.get("reasoning", ""),
+                alternatives=res.get("alternatives", []),
+                approval_tier=approval_tier,
+                approval_required=False,
+            )
+            db.add(item)
+            created_items.append("Research report")
+
+        # Persist Risk output
+        if final_state.get("risk_output") and risk_output.get("go_no_go"):
+            item = PipelineItem(
+                agent_type=AgentType.RISK,
+                status=PipelineStatus.PENDING,
+                title=f"Risk Analysis: {risk_output.get('risk_summary', goal)[:450]}",
+                content=json.dumps(risk_output),
+                platform="Internal",
+                stage="Risk Assessment",
+                meta_data=risk_output,
+                confidence=risk_output.get("confidence"),
+                risk_score=risk_score,
+                risk_level=risk_output.get("risk_level"),
+                reasoning=risk_output.get("reasoning", ""),
+                approval_required=risk_output.get("veto_decision", {}).get("vetoed", False),
+            )
+            db.add(item)
+            created_items.append("Risk report")
+
+        db.commit()
+    finally:
+        db.close()
+
+    return created_items
+
+
 @router.post("/pipeline/run")
 async def trigger_pipeline(body: RunPipelineRequest):
     """Trigger the V2 CEO Brain and stream outputs back via SSE."""
@@ -126,88 +217,7 @@ async def trigger_pipeline(body: RunPipelineRequest):
 
             yield f"data: {json.dumps(event, default=_enc)}\n\n"
 
-        # Persist to DB with V2 Brain metadata
-        db = SessionLocal()
-        created_items = []
-        try:
-            risk_output = final_state.get("risk_output", {})
-            risk_score = risk_output.get("risk_dimensions", {}).get("campaign_failure_probability")
-            debate_log = final_state.get("debate_log", [])
-            constitution_violations = final_state.get("constitution_violations", [])
-
-            # Persist CMO output
-            if final_state.get("cmo_output"):
-                cmo = final_state["cmo_output"]
-                approval_tier = _extract_approval_tier(cmo)
-                # Auto-veto if Risk Brain vetoed
-                is_vetoed = risk_output.get("veto_decision", {}).get("vetoed", False)
-                status = PipelineStatus.VETOED if is_vetoed else PipelineStatus.PENDING
-
-                item = PipelineItem(
-                    agent_type=AgentType.CMO,
-                    status=status,
-                    title=cmo.get("hook", body.goal)[:499],
-                    content=cmo.get("body", ""),
-                    platform=cmo.get("platform", "LinkedIn"),
-                    stage=cmo.get("buying_stage", cmo.get("stage", "Awareness")),
-                    meta_data=cmo,
-                    confidence=cmo.get("confidence"),
-                    risk_score=risk_score,
-                    risk_level=cmo.get("risk_level"),
-                    reasoning=cmo.get("reasoning", ""),
-                    alternatives=cmo.get("alternatives", []),
-                    approval_tier=approval_tier,
-                    debate_log=debate_log,
-                    constitution_violations=constitution_violations,
-                    approval_required=approval_tier != "AUTO_APPROVE" or is_vetoed,
-                )
-                db.add(item)
-                created_items.append("CMO content")
-
-            # Persist Research output
-            if final_state.get("research_output"):
-                res = final_state["research_output"]
-                approval_tier = _extract_approval_tier(res)
-                item = PipelineItem(
-                    agent_type=AgentType.RESEARCH,
-                    status=PipelineStatus.PENDING,
-                    title=res.get("executive_summary", res.get("summary", body.goal))[:499],
-                    content=json.dumps(res),
-                    platform="Internal",
-                    stage="Research",
-                    meta_data=res,
-                    confidence=res.get("confidence"),
-                    risk_level=res.get("risk_level"),
-                    reasoning=res.get("reasoning", ""),
-                    alternatives=res.get("alternatives", []),
-                    approval_tier=approval_tier,
-                    approval_required=False,
-                )
-                db.add(item)
-                created_items.append("Research report")
-
-            # Persist Risk output
-            if final_state.get("risk_output") and risk_output.get("go_no_go"):
-                item = PipelineItem(
-                    agent_type=AgentType.RISK,
-                    status=PipelineStatus.PENDING,
-                    title=f"Risk Analysis: {risk_output.get('risk_summary', body.goal)[:450]}",
-                    content=json.dumps(risk_output),
-                    platform="Internal",
-                    stage="Risk Assessment",
-                    meta_data=risk_output,
-                    confidence=risk_output.get("confidence"),
-                    risk_score=risk_score,
-                    risk_level=risk_output.get("risk_level"),
-                    reasoning=risk_output.get("reasoning", ""),
-                    approval_required=risk_output.get("veto_decision", {}).get("vetoed", False),
-                )
-                db.add(item)
-                created_items.append("Risk report")
-
-            db.commit()
-        finally:
-            db.close()
+        created_items = persist_pipeline_results(final_state, body.goal)
 
         complete_event = {
             "event": "complete",

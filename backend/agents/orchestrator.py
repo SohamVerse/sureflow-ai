@@ -20,7 +20,7 @@ Capabilities:
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -85,7 +85,7 @@ Never include an agent just to look thorough — that wastes resources."""
 
 
 def get_ceo_agent():
-    return get_llm(settings.CEO_MODEL, temperature=0.3, format="json")
+    return get_broker_llm(settings.CEO_MODEL, temperature=0.3, format="json")
 
 
 def ceo_analyze(goal: str, context: dict = None) -> dict:
@@ -172,7 +172,8 @@ Now perform your CEO analysis and produce the routing plan JSON."""
             }
 
     # Normalize to the canonical BrainOutput contract
-    brain_output = parse_brain_output(result, "CEO")
+    cost = estimate_cost(settings.CEO_MODEL, response)
+    brain_output = parse_brain_output(result, "CEO", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     # Persist to memory

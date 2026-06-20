@@ -19,7 +19,7 @@ Outputs:
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -98,7 +98,7 @@ Return a JSON object:
 
 
 def get_cmo_agent():
-    return get_llm(settings.CMO_MODEL, temperature=0.7, format="json")
+    return get_broker_llm(settings.CMO_MODEL, temperature=0.7, format="json")
 
 
 def cmo_draft_content(instruction: str, platform: str = "LinkedIn", stage: str = "Awareness") -> dict:
@@ -163,7 +163,8 @@ Now craft the content strategy and produce the full JSON output."""
                 "error": "Could not parse CMO JSON output",
             }
 
-    brain_output = parse_brain_output(result, "CMO")
+    cost = estimate_cost(settings.CMO_MODEL, response)
+    brain_output = parse_brain_output(result, "CMO", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("CMO", instruction, flat)

@@ -21,7 +21,7 @@ Risk Dimensions:
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -110,7 +110,7 @@ Return a JSON object:
 
 
 def get_risk_agent():
-    return get_llm(settings.RISK_MODEL, temperature=0.2, format="json")  # Low temp = deterministic risk
+    return get_broker_llm(settings.RISK_MODEL, temperature=0.2, format="json")  # Low temp = deterministic risk
 
 
 def risk_analyze(campaign_context: dict, research_output: dict = None, instruction: str = "") -> dict:
@@ -187,7 +187,8 @@ Conduct your full risk analysis and produce the JSON output."""
         result["go_no_go"] = "NO_GO"
         result["risk_level"] = "critical"
 
-    brain_output = parse_brain_output(result, "RISK")
+    cost = estimate_cost(settings.RISK_MODEL, response)
+    brain_output = parse_brain_output(result, "RISK", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RISK", instruction or "risk_analysis", flat)

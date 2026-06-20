@@ -78,12 +78,14 @@ _ENVELOPE_CONSUMED_KEYS = {
 }
 
 
-def parse_brain_output(raw: dict, agent_id: str) -> BrainOutput:
+def parse_brain_output(raw: dict, agent_id: str, cost: float = 0.0) -> BrainOutput:
     """
     Normalize a raw agent LLM-JSON dict into the canonical BrainOutput contract.
 
     `risk` (float) is derived from `risk_level` via a fixed mapping, since no
-    agent prompt currently emits a numeric risk score directly.
+    agent prompt currently emits a numeric risk score directly. `cost` is
+    computed by the caller (see core.model_broker.estimate_cost) from the raw
+    LLM response's token usage, since that response isn't available here.
     """
     risk_level = str(raw.get("risk_level", "medium")).lower()
     confidence = float(raw.get("confidence_score", raw.get("confidence", 50)))
@@ -91,18 +93,40 @@ def parse_brain_output(raw: dict, agent_id: str) -> BrainOutput:
 
     payload = {k: v for k, v in raw.items() if k not in _ENVELOPE_CONSUMED_KEYS}
 
-    return BrainOutput(
-        agent_id=agent_id,
-        reasoning=raw.get("reasoning", ""),
-        confidence=confidence,
-        risk=_RISK_LEVEL_TO_SCORE.get(risk_level, 50.0),
-        risk_level=risk_level,
-        recommendation=raw.get("recommendation", ""),
-        alternatives=raw.get("alternatives_considered", raw.get("alternatives", [])),
-        payload=payload,
-        requires_human_approval=(tier != "AUTO_APPROVE"),
-        reflection_notes=raw.get("self_challenge", ""),
+    # Local models don't always honor the prompt's JSON schema (e.g. emitting
+    # objects where a list[str] was asked for) — coerce rather than crash.
+    raw_alternatives = raw.get("alternatives_considered", raw.get("alternatives", []))
+    alternatives = (
+        [a if isinstance(a, str) else json.dumps(a) for a in raw_alternatives]
+        if isinstance(raw_alternatives, list) else []
     )
+
+    try:
+        return BrainOutput(
+            agent_id=agent_id,
+            reasoning=str(raw.get("reasoning", "")),
+            confidence=confidence,
+            cost=cost,
+            risk=_RISK_LEVEL_TO_SCORE.get(risk_level, 50.0),
+            risk_level=risk_level,
+            recommendation=str(raw.get("recommendation", "")),
+            alternatives=alternatives,
+            payload=payload,
+            requires_human_approval=(tier != "AUTO_APPROVE"),
+            reflection_notes=str(raw.get("self_challenge", "")),
+        )
+    except Exception:
+        # Last-resort safety net: never let a malformed LLM response 500 the
+        # request — degrade to a minimal, always-valid output and force review.
+        return BrainOutput(
+            agent_id=agent_id,
+            confidence=confidence,
+            cost=cost,
+            risk=_RISK_LEVEL_TO_SCORE.get(risk_level, 50.0),
+            risk_level=risk_level,
+            payload=payload,
+            requires_human_approval=True,
+        )
 
 
 # ─── BaseBrain ────────────────────────────────────────────────────────────────

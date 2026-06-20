@@ -15,7 +15,7 @@ Every claim should be backed by logic or data.
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -119,7 +119,7 @@ Return a JSON object:
 
 
 def get_research_agent():
-    return get_llm(settings.RESEARCH_MODEL, temperature=0.4, format="json")
+    return get_broker_llm(settings.RESEARCH_MODEL, temperature=0.4, format="json")
 
 
 def research_analyze(instruction: str, raw_data: str = "") -> dict:
@@ -189,7 +189,8 @@ Now conduct your full analysis and produce the research intelligence JSON."""
                 "error": "Could not parse Research JSON output",
             }
 
-    brain_output = parse_brain_output(result, "RESEARCH")
+    cost = estimate_cost(settings.RESEARCH_MODEL, response)
+    brain_output = parse_brain_output(result, "RESEARCH", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RESEARCH", instruction, flat)

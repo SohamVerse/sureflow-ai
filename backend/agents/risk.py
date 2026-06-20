@@ -19,12 +19,15 @@ Risk Dimensions:
   - Campaign failure probability
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 # Risk threshold for automatic veto
 VETO_RISK_THRESHOLD = 70   # If campaign failure probability > 70%, veto it
@@ -142,6 +145,7 @@ Conduct your full risk analysis and produce the JSON output."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "campaign_context": json.dumps(campaign_context, indent=2),
         "instruction": instruction or "Evaluate this campaign for risk.",
@@ -149,6 +153,7 @@ Conduct your full risk analysis and produce the JSON output."""
         "constitution": constitution_text,
         "reflection_memory": reflection,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -192,4 +197,5 @@ Conduct your full risk analysis and produce the JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RISK", instruction or "risk_analysis", flat)
+    evaluator.evaluate(flat, "RISK", settings.RISK_MODEL, latency_ms)
     return flat

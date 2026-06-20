@@ -5,11 +5,12 @@ Activities are where non-deterministic work (wall-clock time, DB writes, LLM
 calls) belongs — Temporal Workflow code itself must stay deterministic since
 it gets replayed.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from temporalio import activity
 
 from agents.graph import run_pipeline
 from api.routes import persist_pipeline_results
+from evaluation.evaluator import evaluator, AGENT_MODELS
 
 # Moved from clawbot.py — simulates fetching an industry trend.
 TRENDS = [
@@ -43,3 +44,23 @@ async def run_scheduled_pipeline_activity() -> dict:
         "agents_run": final_state.get("completed_agents", []),
         "errors": final_state.get("errors", []),
     }
+
+
+@activity.defn
+async def generate_benchmarks_activity() -> dict:
+    """
+    Generates a daily Benchmark snapshot for every live agent/model pair (see
+    evaluation/evaluator.py::EvaluatorBrain.generate_benchmark). Agent/model
+    pairs with no Evaluation rows in the window are skipped, not fabricated.
+    """
+    generated = []
+    skipped = []
+    for agent_id, model_name in AGENT_MODELS.items():
+        benchmark = evaluator.generate_benchmark(agent_id, model_name, timedelta(days=1))
+        if benchmark:
+            generated.append(f"{agent_id}/{model_name}")
+        else:
+            skipped.append(f"{agent_id}/{model_name}")
+
+    activity.logger.info(f"Benchmarks generated: {generated}, skipped (no data): {skipped}")
+    return {"generated": generated, "skipped": skipped}

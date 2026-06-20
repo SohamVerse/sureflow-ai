@@ -13,12 +13,15 @@ Research depth: McKinsey consultant, NOT a GPT summary.
 Every claim should be backed by logic or data.
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 
 RESEARCH_SYSTEM_PROMPT = """You are a Senior Research Analyst at a tier-1 strategy consultancy.
@@ -148,6 +151,7 @@ Now conduct your full analysis and produce the research intelligence JSON."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "instruction": instruction,
         "raw_data": raw_data or "No raw data provided — use knowledge vault and your training knowledge.",
@@ -156,6 +160,7 @@ Now conduct your full analysis and produce the research intelligence JSON."""
         "constitution": constitution_text,
         "reflection_memory": reflection,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -194,4 +199,5 @@ Now conduct your full analysis and produce the research intelligence JSON."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RESEARCH", instruction, flat)
+    evaluator.evaluate(flat, "RESEARCH", settings.RESEARCH_MODEL, latency_ms)
     return flat

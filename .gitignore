@@ -5,6 +5,7 @@ backend/**/__pycache__/
 backend/*.db
 backend/.env
 backend/alembic/__pycache__/
+backend/.pytest_cache/
 *.pyc
 
 # Node (frontend)

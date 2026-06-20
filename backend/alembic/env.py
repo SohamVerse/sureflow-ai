@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.config import settings
 from core.database import Base
 from models import pipeline, leads, vault, memory, constitution  # noqa: F401
+from evaluation import models as evaluation_models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

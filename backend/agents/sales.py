@@ -15,12 +15,15 @@ AE Brain:
   - Upselling identification
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 
 SDR_SYSTEM_PROMPT = """You are a Senior SDR (Sales Development Representative) with 15+ years of B2B sales experience.
@@ -183,6 +186,7 @@ Score and qualify this lead now."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "lead_data": json.dumps(lead_data, indent=2),
         "instruction": instruction or "Score this lead against our ICP and determine the best outreach strategy.",
@@ -190,6 +194,7 @@ Score and qualify this lead now."""
         "constitution": constitution_text,
         "reflection_memory": reflection,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -219,6 +224,7 @@ Score and qualify this lead now."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("SDR", str(lead_data), flat)
+    evaluator.evaluate(flat, "SDR", settings.SDR_MODEL, latency_ms)
     return flat
 
 
@@ -251,6 +257,7 @@ Qualify this lead and produce your full deal analysis."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "lead_data": json.dumps(lead_data, indent=2),
         "history": conversation_history or "No prior conversation on record.",
@@ -259,6 +266,7 @@ Qualify this lead and produce your full deal analysis."""
         "constitution": constitution_text,
         "reflection_memory": reflection,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -287,4 +295,5 @@ Qualify this lead and produce your full deal analysis."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("AE", str(lead_data), flat)
+    evaluator.evaluate(flat, "AE", settings.AE_MODEL, latency_ms)
     return flat

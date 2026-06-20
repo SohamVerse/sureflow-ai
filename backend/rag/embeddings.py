@@ -12,6 +12,7 @@ from langchain_ollama import OllamaEmbeddings
 from core.config import settings
 from core.database import SessionLocal
 from models.vault import VaultDocument
+from skill_registry.registry import skill_registry
 
 # Knowledge Vault collections matching the 6 synced folders
 VAULT_COLLECTIONS = {
@@ -63,7 +64,7 @@ def ingest_document(file_path: str, collection_name: str, metadata: Optional[dic
 
     file_hash = _file_hash(file_path)
     texts = [chunk.page_content for chunk in chunks]
-    embeddings = embedder.embed_documents(texts)
+    embeddings = skill_registry.execute("ollama.embed", lambda: embedder.embed_documents(texts))
 
     db = SessionLocal()
     try:
@@ -95,7 +96,7 @@ def query_collection(collection_name: str, query: str, n_results: int = 5) -> li
     Returns list of matching document chunks with metadata.
     """
     embedder = get_embeddings()
-    query_embedding = embedder.embed_query(query)
+    query_embedding = skill_registry.execute("ollama.embed", lambda: embedder.embed_query(query))
 
     db = SessionLocal()
     try:

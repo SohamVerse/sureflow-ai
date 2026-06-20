@@ -20,6 +20,7 @@ from agents.graph import run_pipeline, stream_custom_pipeline, stream_pipeline
 from rag.embeddings import ingest_document, get_vault_stats, query_collection, VAULT_COLLECTIONS
 from evaluation.models import Evaluation, Benchmark
 from evaluation.evaluator import evaluator, AGENT_MODELS
+from meta_learning.brain import meta_learning_brain
 
 router = APIRouter()
 
@@ -62,6 +63,12 @@ class ReflectionRequest(BaseModel):
     task_context: str
     failure_reason: str
     lesson: str
+
+
+class ProposeHeuristicsRequest(BaseModel):
+    weights: dict
+    reason: str
+    updated_by: str = "system"
 
 
 # ─── System Health ─────────────────────────────────────────────────────────────
@@ -655,3 +662,57 @@ def generate_benchmarks():
         benchmark = evaluator.generate_benchmark(agent_id, model_name)
         (generated if benchmark else skipped).append(f"{agent_id}/{model_name}")
     return {"generated": generated, "skipped": skipped}
+
+
+# ─── V3: MetaLearningBrain ─────────────────────────────────────────────────────
+
+@router.get("/heuristics")
+def get_heuristics():
+    """Return the currently active heuristic weight set."""
+    return {"weights": meta_learning_brain.get_active_heuristics()}
+
+
+@router.get("/heuristics/history")
+def get_heuristics_history():
+    """Return every heuristic version on record, most recent first."""
+    return meta_learning_brain.get_history()
+
+
+@router.get("/heuristics/review-context")
+def get_heuristics_review_context(db: Session = Depends(get_db)):
+    """
+    Active heuristics alongside recent CMO/EMAIL benchmarks — the real
+    operational data a human reviews before calling POST /heuristics. There's
+    no automatic correlation between weights and outcomes (no real engagement
+    tracking exists yet — see evaluation/evaluator.py), so the decision to
+    propose new weights is explicitly human-driven, informed by this context.
+    """
+    benchmarks = (
+        db.query(Benchmark)
+        .filter(Benchmark.agent_id.in_(["CMO", "EMAIL"]))
+        .order_by(Benchmark.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "active_weights": meta_learning_brain.get_active_heuristics(),
+        "recent_cmo_email_benchmarks": [b.to_dict() for b in benchmarks],
+    }
+
+
+@router.post("/heuristics")
+def propose_heuristics(body: ProposeHeuristicsRequest):
+    """Propose a new heuristic version. Validates weight ranges; raises 400 on failure."""
+    try:
+        return meta_learning_brain.propose_update(body.weights, body.reason, body.updated_by)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/heuristics/rollback/{version}")
+def rollback_heuristics(version: int):
+    """Roll back to a prior heuristic version."""
+    try:
+        return meta_learning_brain.rollback_to_version(version)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -17,7 +17,7 @@ AE Brain:
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -151,11 +151,11 @@ Return a JSON object:
 
 
 def get_sdr_agent():
-    return get_llm(settings.SDR_MODEL, temperature=0.3, format="json")
+    return get_broker_llm(settings.SDR_MODEL, temperature=0.3, format="json")
 
 
 def get_ae_agent():
-    return get_llm(settings.AE_MODEL, temperature=0.4, format="json")
+    return get_broker_llm(settings.AE_MODEL, temperature=0.4, format="json")
 
 
 def sdr_score_lead(lead_data: dict, instruction: str = "") -> dict:
@@ -214,7 +214,8 @@ Score and qualify this lead now."""
                 "error": "Could not parse SDR JSON output",
             }
 
-    brain_output = parse_brain_output(result, "SDR")
+    cost = estimate_cost(settings.SDR_MODEL, response)
+    brain_output = parse_brain_output(result, "SDR", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("SDR", str(lead_data), flat)
@@ -281,7 +282,8 @@ Qualify this lead and produce your full deal analysis."""
                 "error": "Could not parse AE JSON output",
             }
 
-    brain_output = parse_brain_output(result, "AE")
+    cost = estimate_cost(settings.AE_MODEL, response)
+    brain_output = parse_brain_output(result, "AE", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("AE", str(lead_data), flat)

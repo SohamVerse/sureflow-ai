@@ -12,7 +12,7 @@ Capabilities:
 import json
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
-from core.llm import get_llm
+from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
@@ -97,7 +97,7 @@ Return a JSON object:
 
 
 def get_email_agent():
-    return get_llm(settings.EMAIL_MODEL, temperature=0.6, format="json")
+    return get_broker_llm(settings.EMAIL_MODEL, temperature=0.6, format="json")
 
 
 def email_agent_draft(lead_data: dict, additional_context: str = "") -> dict:
@@ -163,7 +163,8 @@ Draft the full email strategy and produce the JSON output."""
                 "error": "Could not parse Email JSON output",
             }
 
-    brain_output = parse_brain_output(result, "EMAIL")
+    cost = estimate_cost(settings.EMAIL_MODEL, response)
+    brain_output = parse_brain_output(result, "EMAIL", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("EMAIL", str(lead_data), flat)

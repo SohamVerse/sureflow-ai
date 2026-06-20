@@ -81,6 +81,19 @@ services:
       - jaeger
     restart: unless-stopped
 
+  neo4j:
+    image: neo4j:5-community
+    container_name: sureflow-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/sureflow_password
+    ports:
+      - "7687:7687" # Bolt — Python driver connects here
+      - "7474:7474" # Neo4j Browser UI
+    volumes:
+      - neo4j_data:/data
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   grafana_data:
+  neo4j_data:

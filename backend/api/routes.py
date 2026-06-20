@@ -22,6 +22,7 @@ from evaluation.models import Evaluation, Benchmark, AgentRunError
 from evaluation.evaluator import evaluator, AGENT_MODELS
 from evaluation.metrics import compute_campaign_summary
 from meta_learning.brain import meta_learning_brain
+from knowledge_graph.graph_store import knowledge_graph
 
 router = APIRouter()
 
@@ -764,3 +765,29 @@ def get_campaign(run_id: str, db: Session = Depends(get_db)):
         "evaluations": evaluation_dicts,
         "errors": [e.to_dict() for e in errors],
     }
+
+
+# ─── V3: Strategic Knowledge Graph ──────────────────────────────────────────────
+
+@router.get("/knowledge-graph/competitors")
+def get_competitors():
+    """
+    All known competitors accumulated from past Research brain runs (not
+    real-time market data — see knowledge_graph/graph_store.py docstring).
+    """
+    return {"competitors": knowledge_graph.get_competitors()}
+
+
+@router.get("/knowledge-graph/competitors/{name}")
+def get_competitor(name: str):
+    """One competitor plus every ResearchRun that identified it."""
+    detail = knowledge_graph.get_competitor_detail(name)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"No competitor named '{name}' on record")
+    return detail
+
+
+@router.get("/knowledge-graph/trends")
+def get_trends():
+    """All known trends accumulated from past Research brain runs."""
+    return {"trends": knowledge_graph.get_trends()}

@@ -23,6 +23,7 @@ from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
 from core.telemetry import get_tracer
+from knowledge_graph.graph_store import knowledge_graph
 
 
 RESEARCH_SYSTEM_PROMPT = """You are a Senior Research Analyst at a tier-1 strategy consultancy.
@@ -54,6 +55,9 @@ ICP Context:
 
 Existing Research Vault:
 {existing_research}
+
+Strategic Knowledge Graph (accumulated from past research runs):
+{knowledge_graph}
 
 Return a JSON object:
 {{
@@ -138,6 +142,9 @@ def research_analyze(instruction: str, raw_data: str = "", run_id: str | None = 
     existing_research = memory.get_research_vault(instruction)
     reflection = memory.get_reflection("RESEARCH", instruction)
     constitution_text = constitution.get_as_prompt_context()
+    knowledge_graph_text = (
+        knowledge_graph.get_competitor_context() + "\n\n" + knowledge_graph.get_trend_context()
+    )
 
     prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(RESEARCH_SYSTEM_PROMPT),
@@ -163,6 +170,7 @@ Now conduct your full analysis and produce the research intelligence JSON."""
             "icp_context": icp_context,
             "existing_research": existing_research,
             "constitution": constitution_text,
+            "knowledge_graph": knowledge_graph_text,
             "reflection_memory": reflection,
         })
         latency_ms = compute_latency_ms(_start, time.perf_counter())
@@ -206,4 +214,5 @@ Now conduct your full analysis and produce the research intelligence JSON."""
 
     memory.save_episodic("RESEARCH", instruction, flat)
     evaluator.evaluate(flat, "RESEARCH", settings.RESEARCH_MODEL, latency_ms, run_id=run_id)
+    knowledge_graph.record_research_output(flat, run_id or "unknown", instruction)
     return flat

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from core.config import settings
 from core.database import create_tables
 from core.telemetry import setup_telemetry
+from knowledge_graph.schema import setup_constraints
 from api.routes import router
 
 
@@ -17,6 +18,8 @@ async def lifespan(app: FastAPI):
     print("🚀 Sureflow Agentic OS starting...")
     create_tables()
     print("✅ PostgreSQL tables ready (pgvector Knowledge Vault included).")
+    setup_constraints()
+    print("✅ Neo4j Strategic Knowledge Graph ready.")
     print("🤖 All agents standing by.")
     yield
     print("👋 Sureflow shutting down.")

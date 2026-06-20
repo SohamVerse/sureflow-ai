@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from core.config import settings
 from core.database import create_tables
+from core.telemetry import setup_telemetry
 from api.routes import router
 
 
@@ -37,6 +38,8 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+
+setup_telemetry(app)
 
 
 @app.get("/")

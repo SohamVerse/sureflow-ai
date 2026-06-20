@@ -7,6 +7,7 @@ from evaluation.metrics import (
     is_vetoed,
     requires_approval,
     compute_benchmark_aggregates,
+    compute_campaign_summary,
 )
 
 
@@ -94,3 +95,43 @@ class TestComputeBenchmarkAggregates:
         result = compute_benchmark_aggregates(evaluations)
         assert result["schema_valid_rate"] == pytest.approx(0.0)
         assert result["veto_rate"] == pytest.approx(1.0)
+
+
+class TestComputeCampaignSummary:
+    def test_empty_input_returns_zeroed_summary(self):
+        result = compute_campaign_summary([])
+        assert result["agent_count"] == 0
+        assert result["agents_involved"] == []
+        assert result["total_cost"] == 0.0
+        assert result["total_latency_ms"] == 0
+        assert result["had_schema_issues"] is False
+
+    def test_sums_cost_and_latency_across_different_agents(self):
+        evaluations = [
+            {"agent_id": "CEO", "cost": 0.0, "latency_ms": 1000, "schema_valid": True},
+            {"agent_id": "CMO", "cost": 0.0, "latency_ms": 2000, "schema_valid": True},
+            {"agent_id": "RISK", "cost": 0.0117, "latency_ms": 4000, "schema_valid": True},
+        ]
+        result = compute_campaign_summary(evaluations)
+        assert result["agent_count"] == 3
+        assert result["agents_involved"] == ["CEO", "CMO", "RISK"]
+        assert result["total_cost"] == pytest.approx(0.0117)
+        assert result["total_latency_ms"] == 7000
+        assert result["had_schema_issues"] is False
+
+    def test_agents_involved_is_sorted_and_deduplicated(self):
+        evaluations = [
+            {"agent_id": "RISK", "cost": 0.0, "latency_ms": 1},
+            {"agent_id": "CEO", "cost": 0.0, "latency_ms": 1},
+            {"agent_id": "RISK", "cost": 0.0, "latency_ms": 1},
+        ]
+        result = compute_campaign_summary(evaluations)
+        assert result["agents_involved"] == ["CEO", "RISK"]
+
+    def test_had_schema_issues_true_if_any_row_failed_validation(self):
+        evaluations = [
+            {"agent_id": "CEO", "cost": 0.0, "latency_ms": 1, "schema_valid": True},
+            {"agent_id": "SDR", "cost": 0.0, "latency_ms": 1, "schema_valid": False},
+        ]
+        result = compute_campaign_summary(evaluations)
+        assert result["had_schema_issues"] is True

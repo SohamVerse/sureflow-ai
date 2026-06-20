@@ -20,6 +20,7 @@ from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
 from meta_learning.brain import meta_learning_brain
+from core.telemetry import get_tracer
 
 
 EMAIL_SYSTEM_PROMPT = """You are a Senior Email Marketing Specialist and copywriter with 15+ years experience.
@@ -106,7 +107,7 @@ def get_email_agent():
     return get_broker_llm(settings.EMAIL_MODEL, temperature=0.6, format="json")
 
 
-def email_agent_draft(lead_data: dict, additional_context: str = "") -> dict:
+def email_agent_draft(lead_data: dict, additional_context: str = "", run_id: str | None = None) -> dict:
     """
     Email Marketing Brain drafts high-converting outreach with A/B variants,
     performance predictions, and a full follow-up sequence.
@@ -136,16 +137,21 @@ Draft the full email strategy and produce the JSON output."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "lead_data": json.dumps(lead_data, indent=2),
-        "voice": voice,
-        "context": additional_context or "Standard outreach.",
-        "constitution": constitution_text,
-        "heuristics": heuristics_text,
-        "reflection_memory": reflection,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("email.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "EMAIL")
+        span.set_attribute("companyos.model", settings.EMAIL_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "lead_data": json.dumps(lead_data, indent=2),
+            "voice": voice,
+            "context": additional_context or "Standard outreach.",
+            "constitution": constitution_text,
+            "heuristics": heuristics_text,
+            "reflection_memory": reflection,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -178,5 +184,5 @@ Draft the full email strategy and produce the JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("EMAIL", str(lead_data), flat)
-    evaluator.evaluate(flat, "EMAIL", settings.EMAIL_MODEL, latency_ms)
+    evaluator.evaluate(flat, "EMAIL", settings.EMAIL_MODEL, latency_ms, run_id=run_id)
     return flat

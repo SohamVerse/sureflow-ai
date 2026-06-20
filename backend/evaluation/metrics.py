@@ -62,3 +62,34 @@ def compute_benchmark_aggregates(evaluations: list[dict]) -> dict:
         "schema_valid_rate": schema_valid_count / n,
         "veto_rate": veto_count / n,
     }
+
+
+def compute_campaign_summary(evaluations: list[dict]) -> dict:
+    """
+    Summarize every Evaluation row sharing one run_id (CompanyOS V3.1 Layer 4
+    — "cost per campaign"). Unlike compute_benchmark_aggregates (averages
+    across many *separate* calls to the same agent/model), this sums across
+    the *different* agents in one pipeline run.
+
+    `had_schema_issues` reflects malformed-LLM-output fallbacks among calls
+    that *did* produce an Evaluation row — it is not the same as a hard
+    agent failure (an exception means no Evaluation row is ever created;
+    those are tracked separately in AgentRunError, surfaced alongside this
+    summary by api/routes.py::get_campaign rather than folded in here).
+    """
+    if not evaluations:
+        return {
+            "agent_count": 0,
+            "agents_involved": [],
+            "total_cost": 0.0,
+            "total_latency_ms": 0,
+            "had_schema_issues": False,
+        }
+
+    return {
+        "agent_count": len(evaluations),
+        "agents_involved": sorted({e["agent_id"] for e in evaluations if e.get("agent_id")}),
+        "total_cost": sum(e.get("cost", 0.0) or 0.0 for e in evaluations),
+        "total_latency_ms": sum(e.get("latency_ms", 0) or 0 for e in evaluations),
+        "had_schema_issues": any(not e.get("schema_valid", True) for e in evaluations),
+    }

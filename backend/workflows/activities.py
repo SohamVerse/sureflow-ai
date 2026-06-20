@@ -36,10 +36,12 @@ async def run_scheduled_pipeline_activity() -> dict:
     activity.logger.info(f"Selected goal: {goal}")
 
     final_state = await run_pipeline(goal)
-    created_items = persist_pipeline_results(final_state, goal)
+    run_id = final_state.get("run_id")
+    created_items = persist_pipeline_results(final_state, goal, run_id=run_id)
 
     return {
         "goal": goal,
+        "run_id": run_id,
         "items_created": created_items,
         "agents_run": final_state.get("completed_agents", []),
         "errors": final_state.get("errors", []),

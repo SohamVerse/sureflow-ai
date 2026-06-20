@@ -22,6 +22,10 @@ class Evaluation(Base):
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_id = Column(String(50), nullable=False, index=True)
     model_name = Column(String(100), nullable=False, index=True)
+    # Correlates every agent call from a single pipeline run (CompanyOS V3.1
+    # Layer 4 — see core/telemetry.py). Nullable: calls made before Phase 6
+    # or outside a traced pipeline run (e.g. direct /risk/analyze) have none.
+    run_id = Column(String(36), nullable=True, index=True)
 
     # Computed from real data
     latency_ms = Column(Integer, nullable=True)
@@ -54,6 +58,7 @@ class Evaluation(Base):
             "id": str(self.id),
             "agent_id": self.agent_id,
             "model_name": self.model_name,
+            "run_id": self.run_id,
             "latency_ms": self.latency_ms,
             "cost": self.cost,
             "confidence": self.confidence,
@@ -112,5 +117,31 @@ class Benchmark(Base):
             "schema_valid_rate": self.schema_valid_rate,
             "constitution_violation_rate": self.constitution_violation_rate,
             "veto_rate": self.veto_rate,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class AgentRunError(Base):
+    """
+    A failure surfaced during one pipeline run. Before Phase 6, the per-node
+    try/except messages in agents/graph.py (AgentState["errors"]) were only
+    ever visible transiently in a single SSE response — never persisted, so
+    "Failures" tracking from the V3.1 spec's Observability layer had no
+    historical record. This table is that record.
+    """
+    __tablename__ = "agent_run_errors"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id = Column(String(36), nullable=True, index=True)
+    agent_id = Column(String(50), nullable=False, index=True)
+    error_message = Column(String(2000), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "run_id": self.run_id,
+            "agent_id": self.agent_id,
+            "error_message": self.error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

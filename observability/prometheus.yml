@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: companyos-backend
+    static_configs:
+      # Backend runs natively on the host (like Ollama), not in Docker —
+      # host.docker.internal is Docker Desktop's host-gateway DNS name.
+      - targets: ["host.docker.internal:8000"]

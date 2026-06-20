@@ -16,6 +16,7 @@ Flow:
       → FINALIZE (CEO synthesis + DB persistence)
 """
 import json
+import uuid
 from typing import TypedDict, Annotated, Sequence, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -37,6 +38,7 @@ from core.constitution import constitution
 class AgentState(TypedDict):
     """Shared state passed between all LangGraph nodes."""
     messages: Annotated[Sequence[BaseMessage], operator.add]
+    run_id: str                          # Correlates every agent call from this run (Phase 6 tracing)
     goal: str                            # Original user goal
     ceo_plan: dict                       # CEO routing plan
     cmo_output: dict                     # CMO drafted content
@@ -60,7 +62,7 @@ def ceo_node(state: AgentState) -> AgentState:
     """CEO Brain: Analyzes goal, produces routing plan with confidence/risk."""
     print(f"[CEO 🧠] Analyzing: {state['goal'][:80]}...")
     try:
-        plan = ceo_analyze(state["goal"])
+        plan = ceo_analyze(state["goal"], run_id=state.get("run_id"))
         print(f"[CEO 🧠] Confidence: {plan.get('confidence', '?')}% | Risk: {plan.get('risk_level', '?')}")
         return {
             "ceo_plan": plan,
@@ -87,7 +89,7 @@ def cmo_node(state: AgentState) -> AgentState:
     instruction = cmo_task["instruction"]
     print(f"[CMO 🎨] Drafting content: {instruction[:60]}...")
     try:
-        output = cmo_draft_content(instruction)
+        output = cmo_draft_content(instruction, run_id=state.get("run_id"))
 
         # Constitution check
         violations = constitution.validate(output, agent_id="CMO")
@@ -118,7 +120,7 @@ def research_node(state: AgentState) -> AgentState:
     instruction = research_task["instruction"]
     print(f"[RESEARCH 🔬] Analyzing: {instruction[:60]}...")
     try:
-        output = research_analyze(instruction)
+        output = research_analyze(instruction, run_id=state.get("run_id"))
         print(f"[RESEARCH 🔬] Confidence: {output.get('confidence', '?')}% | Trends found: {len(output.get('key_trends', []))}")
         return {
             "research_output": output,
@@ -154,7 +156,7 @@ def risk_node(state: AgentState) -> AgentState:
     instruction = risk_task["instruction"] if risk_task else "Evaluate this campaign for risks."
     print(f"[RISK ⚠️] Evaluating campaign risk...")
     try:
-        output = risk_analyze(campaign_context, research_output, instruction)
+        output = risk_analyze(campaign_context, research_output, instruction, run_id=state.get("run_id"))
         veto = output.get("veto_decision", {})
         go_no_go = output.get("go_no_go", "CONDITIONAL_GO")
         print(f"[RISK ⚠️] Decision: {go_no_go} | Failure Prob: {output.get('risk_dimensions', {}).get('campaign_failure_probability', '?')}%")
@@ -191,7 +193,7 @@ def sdr_node(state: AgentState) -> AgentState:
 
     print(f"[SDR 📊] Scoring lead: {lead_data.get('name', 'Unknown')}")
     try:
-        output = sdr_score_lead(lead_data, instruction)
+        output = sdr_score_lead(lead_data, instruction, run_id=state.get("run_id"))
         verdict = output.get("lead_verdict", "NURTURE")
         print(f"[SDR 📊] Verdict: {verdict} | ICP Score: {output.get('icp_score', '?')}/10")
 
@@ -226,7 +228,7 @@ def ae_node(state: AgentState) -> AgentState:
     lead_data = state.get("lead_data", {})
     print(f"[AE 💼] Qualifying lead: {lead_data.get('name', 'Unknown')}")
     try:
-        output = ae_qualify_lead(lead_data)
+        output = ae_qualify_lead(lead_data, run_id=state.get("run_id"))
         print(f"[AE 💼] Close probability: {output.get('close_probability', '?')}%")
         return {
             "ae_output": output,
@@ -253,7 +255,7 @@ def email_node(state: AgentState) -> AgentState:
 
     print(f"[EMAIL ✉️] Drafting outreach for: {lead_data.get('name', 'Unknown')}")
     try:
-        output = email_agent_draft(lead_data, instruction)
+        output = email_agent_draft(lead_data, instruction, run_id=state.get("run_id"))
         print(f"[EMAIL ✉️] Predicted open rate: {output.get('performance_predictions', {}).get('estimated_open_rate', '?')}")
         return {
             "email_output": output,
@@ -383,6 +385,7 @@ async def run_pipeline(goal: str, lead_data: dict = None) -> AgentState:
     """Run the full V2 pipeline and return final state."""
     initial_state: AgentState = {
         "messages": [HumanMessage(content=goal)],
+        "run_id": str(uuid.uuid4()),
         "goal": goal,
         "ceo_plan": {},
         "cmo_output": {},
@@ -407,8 +410,10 @@ async def stream_pipeline(goal: str, lead_data: dict = None):
     Streaming pipeline that yields JSON events as each brain completes.
     Frontend consumes these as SSE events.
     """
+    run_id = str(uuid.uuid4())
     initial_state: AgentState = {
         "messages": [HumanMessage(content=goal)],
+        "run_id": run_id,
         "goal": goal,
         "ceo_plan": {},
         "cmo_output": {},
@@ -425,6 +430,11 @@ async def stream_pipeline(goal: str, lead_data: dict = None):
         "debate_log": [],
         "approval_required": False,
     }
+
+    # Synthetic first event — astream() only yields per-node deltas, and
+    # run_id is static input rather than a node output, so it would never
+    # otherwise reach api/routes.py's accumulated final_state.
+    yield {"event": "run_started", "run_id": run_id}
 
     async for step_output in sureflow_graph.astream(initial_state):
         for node_name, state_update in step_output.items():

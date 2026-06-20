@@ -22,6 +22,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from core.telemetry import get_tracer
 
 
 RESEARCH_SYSTEM_PROMPT = """You are a Senior Research Analyst at a tier-1 strategy consultancy.
@@ -125,7 +126,7 @@ def get_research_agent():
     return get_broker_llm(settings.RESEARCH_MODEL, temperature=0.4, format="json")
 
 
-def research_analyze(instruction: str, raw_data: str = "") -> dict:
+def research_analyze(instruction: str, raw_data: str = "", run_id: str | None = None) -> dict:
     """
     Research Analyst Brain performs deep market intelligence.
     Returns structured intelligence with confidence scores and SWOT.
@@ -151,16 +152,21 @@ Now conduct your full analysis and produce the research intelligence JSON."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "instruction": instruction,
-        "raw_data": raw_data or "No raw data provided — use knowledge vault and your training knowledge.",
-        "icp_context": icp_context,
-        "existing_research": existing_research,
-        "constitution": constitution_text,
-        "reflection_memory": reflection,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("research.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "RESEARCH")
+        span.set_attribute("companyos.model", settings.RESEARCH_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "instruction": instruction,
+            "raw_data": raw_data or "No raw data provided — use knowledge vault and your training knowledge.",
+            "icp_context": icp_context,
+            "existing_research": existing_research,
+            "constitution": constitution_text,
+            "reflection_memory": reflection,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -199,5 +205,5 @@ Now conduct your full analysis and produce the research intelligence JSON."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RESEARCH", instruction, flat)
-    evaluator.evaluate(flat, "RESEARCH", settings.RESEARCH_MODEL, latency_ms)
+    evaluator.evaluate(flat, "RESEARCH", settings.RESEARCH_MODEL, latency_ms, run_id=run_id)
     return flat

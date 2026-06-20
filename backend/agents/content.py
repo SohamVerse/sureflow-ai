@@ -27,6 +27,7 @@ from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
 from meta_learning.brain import meta_learning_brain
+from core.telemetry import get_tracer
 
 
 CMO_SYSTEM_PROMPT = """You are the Chief Marketing Officer with 15+ years of experience in B2B and B2C marketing.
@@ -107,7 +108,9 @@ def get_cmo_agent():
     return get_broker_llm(settings.CMO_MODEL, temperature=0.7, format="json")
 
 
-def cmo_draft_content(instruction: str, platform: str = "LinkedIn", stage: str = "Awareness") -> dict:
+def cmo_draft_content(
+    instruction: str, platform: str = "LinkedIn", stage: str = "Awareness", run_id: str | None = None
+) -> dict:
     """
     CMO Brain drafts stage-aware, platform-optimized content.
     Includes full Reel scripts, image prompts, and content calendar context.
@@ -134,19 +137,24 @@ Now craft the content strategy and produce the full JSON output."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "instruction": instruction,
-        "platform": platform,
-        "stage": stage,
-        "constitution": constitution_text,
-        "heuristics": heuristics_text,
-        "reflection_memory": reflection,
-        "voice_profile": voice_profile,
-        "content_pillars": content_pillars,
-        "what_works": what_works,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("cmo.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "CMO")
+        span.set_attribute("companyos.model", settings.CMO_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "instruction": instruction,
+            "platform": platform,
+            "stage": stage,
+            "constitution": constitution_text,
+            "heuristics": heuristics_text,
+            "reflection_memory": reflection,
+            "voice_profile": voice_profile,
+            "content_pillars": content_pillars,
+            "what_works": what_works,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -178,5 +186,5 @@ Now craft the content strategy and produce the full JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("CMO", instruction, flat)
-    evaluator.evaluate(flat, "CMO", settings.CMO_MODEL, latency_ms)
+    evaluator.evaluate(flat, "CMO", settings.CMO_MODEL, latency_ms, run_id=run_id)
     return flat

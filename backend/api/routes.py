@@ -18,8 +18,9 @@ from models.pipeline import PipelineItem, PipelineStatus, AgentType
 from models.leads import Lead, LeadStatus, BuyingStage
 from agents.graph import run_pipeline, stream_custom_pipeline, stream_pipeline
 from rag.embeddings import ingest_document, get_vault_stats, query_collection, VAULT_COLLECTIONS
-from evaluation.models import Evaluation, Benchmark
+from evaluation.models import Evaluation, Benchmark, AgentRunError
 from evaluation.evaluator import evaluator, AGENT_MODELS
+from evaluation.metrics import compute_campaign_summary
 from meta_learning.brain import meta_learning_brain
 
 router = APIRouter()
@@ -109,15 +110,23 @@ def _extract_approval_tier(brain_output: dict) -> str:
     return "AUTO_APPROVE"
 
 
-def persist_pipeline_results(final_state: dict, goal: str) -> list[str]:
+def persist_pipeline_results(final_state: dict, goal: str, run_id: Optional[str] = None) -> list[str]:
     """
     Persist CMO/Research/Risk outputs from a completed pipeline run as PipelineItems.
     Shared by the interactive SSE endpoint (trigger_pipeline) and the
     Temporal-scheduled cron workflow (workflows/activities.py).
+
+    Also persists any agent_run_errors (CompanyOS V3.1 Layer 4 — "Failures"
+    tracking) so per-node failures survive past the single SSE response that
+    used to be their only visibility.
     """
     db = SessionLocal()
     created_items = []
     try:
+        for error_message in final_state.get("errors", []):
+            agent_id = error_message.split(" ")[0].strip("[]") if error_message else "UNKNOWN"
+            db.add(AgentRunError(run_id=run_id, agent_id=agent_id, error_message=error_message[:2000]))
+
         risk_output = final_state.get("risk_output", {})
         risk_score = risk_output.get("risk_dimensions", {}).get("campaign_failure_probability")
         debate_log = final_state.get("debate_log", [])
@@ -206,8 +215,12 @@ async def trigger_pipeline(body: RunPipelineRequest):
 
     async def event_generator():
         final_state = {}
+        run_id = None
 
         async for event in stream_pipeline(body.goal, body.lead_data):
+            if event.get("event") == "run_started":
+                run_id = event.get("run_id")
+
             update = event.get("update", {}) or {}
             for key, val in update.items():
                 if isinstance(val, list):
@@ -226,11 +239,12 @@ async def trigger_pipeline(body: RunPipelineRequest):
 
             yield f"data: {json.dumps(event, default=_enc)}\n\n"
 
-        created_items = persist_pipeline_results(final_state, body.goal)
+        created_items = persist_pipeline_results(final_state, body.goal, run_id=run_id)
 
         complete_event = {
             "event": "complete",
             "success": True,
+            "run_id": run_id,
             "items_created": created_items,
             "agents_run": final_state.get("completed_agents", []),
             "errors": final_state.get("errors", []),
@@ -716,3 +730,37 @@ def rollback_heuristics(version: int):
         return meta_learning_brain.rollback_to_version(version)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ─── V3: Observability (distributed tracing correlation) ──────────────────────
+
+@router.get("/observability/campaigns/{run_id}")
+def get_campaign(run_id: str, db: Session = Depends(get_db)):
+    """
+    Every Evaluation + AgentRunError for one pipeline run (CompanyOS V3.1
+    Layer 4 — "cost per campaign" and "Failures"), plus a computed summary.
+    The same run_id tags this run's trace in Jaeger (core/telemetry.py),
+    so a trace and its cost/latency/error data are cross-referenceable.
+    """
+    evaluations = (
+        db.query(Evaluation)
+        .filter(Evaluation.run_id == run_id)
+        .order_by(Evaluation.created_at.asc())
+        .all()
+    )
+    errors = (
+        db.query(AgentRunError)
+        .filter(AgentRunError.run_id == run_id)
+        .order_by(AgentRunError.created_at.asc())
+        .all()
+    )
+    if not evaluations and not errors:
+        raise HTTPException(status_code=404, detail=f"No data found for run_id {run_id}")
+
+    evaluation_dicts = [e.to_dict() for e in evaluations]
+    return {
+        "run_id": run_id,
+        "summary": compute_campaign_summary(evaluation_dicts),
+        "evaluations": evaluation_dicts,
+        "errors": [e.to_dict() for e in errors],
+    }

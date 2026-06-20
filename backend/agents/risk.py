@@ -28,6 +28,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from core.telemetry import get_tracer
 
 # Risk threshold for automatic veto
 VETO_RISK_THRESHOLD = 70   # If campaign failure probability > 70%, veto it
@@ -116,7 +117,9 @@ def get_risk_agent():
     return get_broker_llm(settings.RISK_MODEL, temperature=0.2, format="json")  # Low temp = deterministic risk
 
 
-def risk_analyze(campaign_context: dict, research_output: dict = None, instruction: str = "") -> dict:
+def risk_analyze(
+    campaign_context: dict, research_output: dict = None, instruction: str = "", run_id: str | None = None
+) -> dict:
     """
     Risk Analysis Brain evaluates a campaign or business decision.
     Returns risk assessment with veto decision and mitigation plan.
@@ -145,15 +148,20 @@ Conduct your full risk analysis and produce the JSON output."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "campaign_context": json.dumps(campaign_context, indent=2),
-        "instruction": instruction or "Evaluate this campaign for risk.",
-        "research_context": research_context,
-        "constitution": constitution_text,
-        "reflection_memory": reflection,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("risk.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "RISK")
+        span.set_attribute("companyos.model", settings.RISK_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "campaign_context": json.dumps(campaign_context, indent=2),
+            "instruction": instruction or "Evaluate this campaign for risk.",
+            "research_context": research_context,
+            "constitution": constitution_text,
+            "reflection_memory": reflection,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -197,5 +205,5 @@ Conduct your full risk analysis and produce the JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("RISK", instruction or "risk_analysis", flat)
-    evaluator.evaluate(flat, "RISK", settings.RISK_MODEL, latency_ms)
+    evaluator.evaluate(flat, "RISK", settings.RISK_MODEL, latency_ms, run_id=run_id)
     return flat

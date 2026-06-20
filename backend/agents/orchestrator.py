@@ -27,6 +27,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from core.telemetry import get_tracer
 
 
 CEO_SYSTEM_PROMPT = """You are the CEO of a high-growth company operating through CompanyOS V2.
@@ -91,7 +92,7 @@ def get_ceo_agent():
     return get_broker_llm(settings.CEO_MODEL, temperature=0.3, format="json")
 
 
-def ceo_analyze(goal: str, context: dict = None) -> dict:
+def ceo_analyze(goal: str, context: dict = None, run_id: str | None = None) -> dict:
     """
     CEO analyzes a high-level goal and produces a routing plan.
     Queries ICP, Voice, and Research collections from Knowledge Vault.
@@ -134,18 +135,23 @@ Now perform your CEO analysis and produce the routing plan JSON."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "goal": goal,
-        "icp_context": icp_context,
-        "voice_context": voice_context,
-        "research_context": research_context,
-        "extra_context": str(context) if context else "None provided.",
-        "constitution": constitution_text,
-        "reflection_memory": reflection,
-        "episodic_memory": episodic_text,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("ceo.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "CEO")
+        span.set_attribute("companyos.model", settings.CEO_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "goal": goal,
+            "icp_context": icp_context,
+            "voice_context": voice_context,
+            "research_context": research_context,
+            "extra_context": str(context) if context else "None provided.",
+            "constitution": constitution_text,
+            "reflection_memory": reflection,
+            "episodic_memory": episodic_text,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -183,5 +189,5 @@ Now perform your CEO analysis and produce the routing plan JSON."""
 
     # Persist to memory
     memory.save_episodic("CEO", goal, flat)
-    evaluator.evaluate(flat, "CEO", settings.CEO_MODEL, latency_ms)
+    evaluator.evaluate(flat, "CEO", settings.CEO_MODEL, latency_ms, run_id=run_id)
     return flat

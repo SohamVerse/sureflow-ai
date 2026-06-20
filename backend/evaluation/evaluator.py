@@ -48,6 +48,7 @@ class EvaluatorBrain:
         model_name: str,
         latency_ms: int,
         constitution_violation_count: int = 0,
+        run_id: str | None = None,
     ) -> Evaluation:
         """
         Persist one Evaluation row for a completed agent call.
@@ -57,12 +58,17 @@ class EvaluatorBrain:
         after this function's caller already has its output, on a separate
         code path (the result is persisted on PipelineItem, not duplicated
         here). Real per-agent wiring is a candidate for a later phase.
+
+        `run_id` (CompanyOS V3.1 Layer 4 — see core/telemetry.py) correlates
+        every agent call from one pipeline run, enabling cost/latency-per-
+        campaign queries (api/routes.py::get_campaign).
         """
         db = SessionLocal()
         try:
             evaluation = Evaluation(
                 agent_id=agent_id,
                 model_name=model_name,
+                run_id=run_id,
                 latency_ms=latency_ms,
                 cost=output.get("cost", 0.0),
                 confidence=output.get("confidence"),

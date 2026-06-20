@@ -24,6 +24,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from core.telemetry import get_tracer
 
 
 SDR_SYSTEM_PROMPT = """You are a Senior SDR (Sales Development Representative) with 15+ years of B2B sales experience.
@@ -161,7 +162,7 @@ def get_ae_agent():
     return get_broker_llm(settings.AE_MODEL, temperature=0.4, format="json")
 
 
-def sdr_score_lead(lead_data: dict, instruction: str = "") -> dict:
+def sdr_score_lead(lead_data: dict, instruction: str = "", run_id: str | None = None) -> dict:
     """
     SDR Brain scores a lead against ICP, determines verdict (REJECT/NURTURE/OUTREACH/ESCALATE),
     and drafts personalized outreach with objection anticipation.
@@ -186,15 +187,20 @@ Score and qualify this lead now."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "lead_data": json.dumps(lead_data, indent=2),
-        "instruction": instruction or "Score this lead against our ICP and determine the best outreach strategy.",
-        "icp_context": icp_context,
-        "constitution": constitution_text,
-        "reflection_memory": reflection,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("sdr.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "SDR")
+        span.set_attribute("companyos.model", settings.SDR_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "lead_data": json.dumps(lead_data, indent=2),
+            "instruction": instruction or "Score this lead against our ICP and determine the best outreach strategy.",
+            "icp_context": icp_context,
+            "constitution": constitution_text,
+            "reflection_memory": reflection,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -224,11 +230,11 @@ Score and qualify this lead now."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("SDR", str(lead_data), flat)
-    evaluator.evaluate(flat, "SDR", settings.SDR_MODEL, latency_ms)
+    evaluator.evaluate(flat, "SDR", settings.SDR_MODEL, latency_ms, run_id=run_id)
     return flat
 
 
-def ae_qualify_lead(lead_data: dict, conversation_history: str = "") -> dict:
+def ae_qualify_lead(lead_data: dict, conversation_history: str = "", run_id: str | None = None) -> dict:
     """
     AE Brain deeply qualifies a lead, maps stakeholders, recommends pricing,
     and produces a revenue forecast with probability-weighted deal value.
@@ -257,16 +263,21 @@ Qualify this lead and produce your full deal analysis."""
     ])
 
     chain = prompt | llm
-    _start = time.perf_counter()
-    response = chain.invoke({
-        "lead_data": json.dumps(lead_data, indent=2),
-        "history": conversation_history or "No prior conversation on record.",
-        "icp_context": icp_context,
-        "what_works": what_works,
-        "constitution": constitution_text,
-        "reflection_memory": reflection,
-    })
-    latency_ms = compute_latency_ms(_start, time.perf_counter())
+    with get_tracer().start_as_current_span("ae.invoke") as span:
+        span.set_attribute("companyos.run_id", run_id or "")
+        span.set_attribute("companyos.agent_id", "AE")
+        span.set_attribute("companyos.model", settings.AE_MODEL)
+        _start = time.perf_counter()
+        response = chain.invoke({
+            "lead_data": json.dumps(lead_data, indent=2),
+            "history": conversation_history or "No prior conversation on record.",
+            "icp_context": icp_context,
+            "what_works": what_works,
+            "constitution": constitution_text,
+            "reflection_memory": reflection,
+        })
+        latency_ms = compute_latency_ms(_start, time.perf_counter())
+        span.set_attribute("companyos.latency_ms", latency_ms)
 
     try:
         result = json.loads(response.content)
@@ -295,5 +306,5 @@ Qualify this lead and produce your full deal analysis."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("AE", str(lead_data), flat)
-    evaluator.evaluate(flat, "AE", settings.AE_MODEL, latency_ms)
+    evaluator.evaluate(flat, "AE", settings.AE_MODEL, latency_ms, run_id=run_id)
     return flat

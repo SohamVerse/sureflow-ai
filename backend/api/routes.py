@@ -23,6 +23,8 @@ from evaluation.evaluator import evaluator, AGENT_MODELS
 from evaluation.metrics import compute_campaign_summary
 from meta_learning.brain import meta_learning_brain
 from knowledge_graph.graph_store import knowledge_graph
+from core.mcp import mcp_client
+from skill_registry.registry import skill_registry
 
 router = APIRouter()
 
@@ -363,22 +365,41 @@ def update_item_status(item_id: uuid.UUID, body: UpdateStatusRequest, db: Sessio
     return item.to_dict()
 
 
+PLATFORM_TO_MCP_ACTION = {
+    "linkedin": ("linkedin", "post"),
+    "instagram": ("instagram", "post_reel"),
+}
+
+
 @router.post("/pipeline/items/{item_id}/post")
 def post_pipeline_item_mcp(item_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Mock endpoint to publish content via MCP to Instagram/LinkedIn/X."""
+    """
+    Publish content via MCP, routed through the TrustedSkillRegistry
+    (CompanyOS V3.1 Layer 6 — see skill_registry/registry.py). core/mcp.py's
+    MCPServer is still fully mocked (no real LinkedIn/Instagram API calls) —
+    this fixes the previous behavior, which never actually called it at all
+    and could not fail no matter what.
+    """
     item = db.query(PipelineItem).filter(PipelineItem.id == str(item_id)).first()
     if not item:
         raise HTTPException(status_code=404, detail="Pipeline item not found")
-        
+
     if item.status != PipelineStatus.APPROVED:
         raise HTTPException(status_code=400, detail="Item must be APPROVED before posting")
-        
-    # TODO: Here we would trigger the actual MCP Server client (e.g., mcp-social-media)
-    print(f"[MCP] Publishing '{item.title}' to {item.platform} via MCP Server...")
-    
+
+    platform, action = PLATFORM_TO_MCP_ACTION.get((item.platform or "").lower(), ("linkedin", "post"))
+    params = {"content": item.content, "title": item.title}
+
+    result = skill_registry.execute(
+        f"mcp.{platform}.{action}", lambda: mcp_client.execute_tool(platform, action, params)
+    )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=502, detail=f"MCP publish failed: {result.get('error')}")
+
     item.status = PipelineStatus.POSTED
     item.posted_at = datetime.now(timezone.utc)
-    
+    item.meta_data = {**(item.meta_data or {}), "mcp_result": result}
+
     db.commit()
     return {"status": "success", "message": "Published via MCP", "item": item.to_dict()}
 
@@ -791,3 +812,29 @@ def get_competitor(name: str):
 def get_trends():
     """All known trends accumulated from past Research brain runs."""
     return {"trends": knowledge_graph.get_trends()}
+
+
+# ─── V3: Trusted Skill Registry ─────────────────────────────────────────────────
+
+@router.get("/skills/reputation")
+def get_skill_reputations():
+    """
+    Every tracked skill's trust_score/avg_latency_ms/failure_rate, each tagged
+    `is_mocked` — the 4 MCP platforms in core/mcp.py are fully mocked (no real
+    OAuth/API calls), so their reputation reflects "the mock always succeeds,"
+    not real-world reliability. `ollama.embed` is the one genuinely real skill.
+    """
+    return {"skills": skill_registry.get_all_reputations()}
+
+
+@router.get("/skills/reputation/{skill_name}")
+def get_skill_reputation(skill_name: str):
+    """One skill's reputation detail."""
+    return skill_registry.get_reputation(skill_name)
+
+
+@router.get("/skills/recommend")
+def recommend_skill(category: str):
+    """The registry's highest-trust pick for a capability category (e.g. social_post, crm,
+    email, embedding). Returns null if no skill in that category has any recorded executions yet."""
+    return {"category": category, "recommended_skill": skill_registry.recommend(category)}

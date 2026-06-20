@@ -14,6 +14,7 @@ from core.database import Base
 from models import pipeline, leads, vault, memory, constitution  # noqa: F401
 from evaluation import models as evaluation_models  # noqa: F401
 from meta_learning import models as meta_learning_models  # noqa: F401
+from skill_registry import models as skill_registry_models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

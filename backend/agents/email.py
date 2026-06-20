@@ -19,6 +19,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from meta_learning.brain import meta_learning_brain
 
 
 EMAIL_SYSTEM_PROMPT = """You are a Senior Email Marketing Specialist and copywriter with 15+ years experience.
@@ -46,6 +47,8 @@ Decision Framework:
 
 Company Constitution:
 {constitution}
+
+{heuristics}
 
 Reflection Memory:
 {reflection_memory}
@@ -114,6 +117,7 @@ def email_agent_draft(lead_data: dict, additional_context: str = "") -> dict:
     voice = memory.get_voice_profile(f"email outreach {lead_data.get('title', '')}")
     reflection = memory.get_reflection("EMAIL", str(lead_data))
     constitution_text = constitution.get_as_prompt_context()
+    heuristics_text = meta_learning_brain.get_as_prompt_context()
 
     prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(EMAIL_SYSTEM_PROMPT),
@@ -138,6 +142,7 @@ Draft the full email strategy and produce the JSON output."""
         "voice": voice,
         "context": additional_context or "Standard outreach.",
         "constitution": constitution_text,
+        "heuristics": heuristics_text,
         "reflection_memory": reflection,
     })
     latency_ms = compute_latency_ms(_start, time.perf_counter())

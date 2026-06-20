@@ -26,6 +26,7 @@ from core.memory import MemoryStore
 from core.constitution import constitution
 from evaluation.evaluator import evaluator
 from evaluation.metrics import compute_latency_ms
+from meta_learning.brain import meta_learning_brain
 
 
 CMO_SYSTEM_PROMPT = """You are the Chief Marketing Officer with 15+ years of experience in B2B and B2C marketing.
@@ -48,6 +49,8 @@ Your Internal Thought Process (apply always):
 
 Company Constitution:
 {constitution}
+
+{heuristics}
 
 Reflection Memory (past failures to avoid):
 {reflection_memory}
@@ -117,6 +120,7 @@ def cmo_draft_content(instruction: str, platform: str = "LinkedIn", stage: str =
     what_works = memory.get_what_works(f"{platform} {stage}")
     reflection = memory.get_reflection("CMO", instruction)
     constitution_text = constitution.get_as_prompt_context()
+    heuristics_text = meta_learning_brain.get_as_prompt_context()
 
     prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(CMO_SYSTEM_PROMPT),
@@ -136,6 +140,7 @@ Now craft the content strategy and produce the full JSON output."""
         "platform": platform,
         "stage": stage,
         "constitution": constitution_text,
+        "heuristics": heuristics_text,
         "reflection_memory": reflection,
         "voice_profile": voice_profile,
         "content_pillars": content_pillars,

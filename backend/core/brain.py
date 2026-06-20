@@ -43,6 +43,7 @@ class BrainOutput(BaseModel):
     self_challenge_passed: bool = True             # Did the agent challenge itself?
     reflection_notes: str = ""                     # What past failures informed this
     execution_time_ms: int = 0
+    schema_valid: bool = True                      # False if the last-resort fallback below was used
 
     def to_dict(self) -> dict:
         return self.model_dump()
@@ -126,6 +127,7 @@ def parse_brain_output(raw: dict, agent_id: str, cost: float = 0.0) -> BrainOutp
             risk_level=risk_level,
             payload=payload,
             requires_human_approval=True,
+            schema_valid=False,
         )
 
 

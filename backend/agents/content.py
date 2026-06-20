@@ -17,12 +17,15 @@ Outputs:
   - Campaign plans with estimated reach and engagement
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 
 CMO_SYSTEM_PROMPT = """You are the Chief Marketing Officer with 15+ years of experience in B2B and B2C marketing.
@@ -127,6 +130,7 @@ Now craft the content strategy and produce the full JSON output."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "instruction": instruction,
         "platform": platform,
@@ -137,6 +141,7 @@ Now craft the content strategy and produce the full JSON output."""
         "content_pillars": content_pillars,
         "what_works": what_works,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -168,4 +173,5 @@ Now craft the content strategy and produce the full JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("CMO", instruction, flat)
+    evaluator.evaluate(flat, "CMO", settings.CMO_MODEL, latency_ms)
     return flat

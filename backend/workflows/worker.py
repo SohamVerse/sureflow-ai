@@ -19,46 +19,69 @@ from temporalio.client import (
 )
 from temporalio.worker import Worker
 
-from workflows.activities import run_scheduled_pipeline_activity
-from workflows.cron_workflow import ScheduledPipelineWorkflow
+from workflows.activities import run_scheduled_pipeline_activity, generate_benchmarks_activity
+from workflows.cron_workflow import ScheduledPipelineWorkflow, BenchmarkGenerationWorkflow
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("companyos.worker")
 
 TEMPORAL_ADDRESS = "localhost:7233"
 TASK_QUEUE = "companyos-pipeline"
-SCHEDULE_ID = "companyos-hourly-pipeline"
 
 
-async def ensure_schedule(client: Client) -> None:
-    """Idempotently create the hourly schedule (preserves clawbot's 'run once on start')."""
+async def ensure_schedule(
+    client: Client,
+    schedule_id: str,
+    workflow_run_fn,
+    workflow_id: str,
+    interval: timedelta,
+    trigger_immediately: bool = False,
+) -> None:
+    """Idempotently create a Schedule for a workflow — safe to call on every worker restart."""
     try:
         await client.create_schedule(
-            SCHEDULE_ID,
+            schedule_id,
             Schedule(
                 action=ScheduleActionStartWorkflow(
-                    ScheduledPipelineWorkflow.run,
-                    id="companyos-scheduled-pipeline",
+                    workflow_run_fn,
+                    id=workflow_id,
                     task_queue=TASK_QUEUE,
                 ),
-                spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=timedelta(hours=1))]),
+                spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=interval)]),
             ),
-            trigger_immediately=True,
+            trigger_immediately=trigger_immediately,
         )
-        logger.info(f"Created schedule '{SCHEDULE_ID}' (hourly, triggered immediately).")
+        logger.info(f"Created schedule '{schedule_id}' (every {interval}).")
     except ScheduleAlreadyRunningError:
-        logger.info(f"Schedule '{SCHEDULE_ID}' already exists — skipping creation.")
+        logger.info(f"Schedule '{schedule_id}' already exists — skipping creation.")
 
 
 async def main():
     client = await Client.connect(TEMPORAL_ADDRESS)
-    await ensure_schedule(client)
+
+    # Hourly pipeline run — replaces clawbot.py, preserves its "run once on start".
+    await ensure_schedule(
+        client,
+        schedule_id="companyos-hourly-pipeline",
+        workflow_run_fn=ScheduledPipelineWorkflow.run,
+        workflow_id="companyos-scheduled-pipeline",
+        interval=timedelta(hours=1),
+        trigger_immediately=True,
+    )
+    # Daily benchmark rollup — see evaluation/evaluator.py.
+    await ensure_schedule(
+        client,
+        schedule_id="companyos-daily-benchmarks",
+        workflow_run_fn=BenchmarkGenerationWorkflow.run,
+        workflow_id="companyos-benchmark-generation",
+        interval=timedelta(days=1),
+    )
 
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
-        workflows=[ScheduledPipelineWorkflow],
-        activities=[run_scheduled_pipeline_activity],
+        workflows=[ScheduledPipelineWorkflow, BenchmarkGenerationWorkflow],
+        activities=[run_scheduled_pipeline_activity, generate_benchmarks_activity],
     )
     logger.info(f"🚀 CompanyOS Temporal Worker started on task queue '{TASK_QUEUE}'.")
     await worker.run()

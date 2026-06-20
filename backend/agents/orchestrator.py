@@ -18,12 +18,15 @@ Capabilities:
   - Growth opportunity identification
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 
 CEO_SYSTEM_PROMPT = """You are the CEO of a high-growth company operating through CompanyOS V2.
@@ -131,6 +134,7 @@ Now perform your CEO analysis and produce the routing plan JSON."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "goal": goal,
         "icp_context": icp_context,
@@ -141,6 +145,7 @@ Now perform your CEO analysis and produce the routing plan JSON."""
         "reflection_memory": reflection,
         "episodic_memory": episodic_text,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -178,4 +183,5 @@ Now perform your CEO analysis and produce the routing plan JSON."""
 
     # Persist to memory
     memory.save_episodic("CEO", goal, flat)
+    evaluator.evaluate(flat, "CEO", settings.CEO_MODEL, latency_ms)
     return flat

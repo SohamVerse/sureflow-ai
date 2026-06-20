@@ -10,12 +10,15 @@ Capabilities:
   - Spam score awareness
 """
 import json
+import time
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
 from core.memory import MemoryStore
 from core.constitution import constitution
+from evaluation.evaluator import evaluator
+from evaluation.metrics import compute_latency_ms
 
 
 EMAIL_SYSTEM_PROMPT = """You are a Senior Email Marketing Specialist and copywriter with 15+ years experience.
@@ -129,6 +132,7 @@ Draft the full email strategy and produce the JSON output."""
     ])
 
     chain = prompt | llm
+    _start = time.perf_counter()
     response = chain.invoke({
         "lead_data": json.dumps(lead_data, indent=2),
         "voice": voice,
@@ -136,6 +140,7 @@ Draft the full email strategy and produce the JSON output."""
         "constitution": constitution_text,
         "reflection_memory": reflection,
     })
+    latency_ms = compute_latency_ms(_start, time.perf_counter())
 
     try:
         result = json.loads(response.content)
@@ -168,4 +173,5 @@ Draft the full email strategy and produce the JSON output."""
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
     memory.save_episodic("EMAIL", str(lead_data), flat)
+    evaluator.evaluate(flat, "EMAIL", settings.EMAIL_MODEL, latency_ms)
     return flat

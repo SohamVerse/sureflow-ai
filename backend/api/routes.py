@@ -18,6 +18,8 @@ from models.pipeline import PipelineItem, PipelineStatus, AgentType
 from models.leads import Lead, LeadStatus, BuyingStage
 from agents.graph import run_pipeline, stream_custom_pipeline, stream_pipeline
 from rag.embeddings import ingest_document, get_vault_stats, query_collection, VAULT_COLLECTIONS
+from evaluation.models import Evaluation, Benchmark
+from evaluation.evaluator import evaluator, AGENT_MODELS
 
 router = APIRouter()
 
@@ -617,3 +619,39 @@ async def analyze_risk(body: dict):
     instruction = body.get("instruction", "")
     result = risk_analyze(campaign_context, {}, instruction)
     return result
+
+
+# ─── V3: EvaluatorBrain ────────────────────────────────────────────────────────
+
+@router.get("/evaluations")
+def get_evaluations(agent_id: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db)):
+    """Return recent BrainOutput evaluations, optionally filtered by agent."""
+    query = db.query(Evaluation)
+    if agent_id:
+        query = query.filter(Evaluation.agent_id == agent_id.upper())
+    rows = query.order_by(Evaluation.created_at.desc()).limit(limit).all()
+    return [r.to_dict() for r in rows]
+
+
+@router.get("/benchmarks")
+def get_benchmarks(agent_id: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db)):
+    """Return recent benchmark snapshots, optionally filtered by agent."""
+    query = db.query(Benchmark)
+    if agent_id:
+        query = query.filter(Benchmark.agent_id == agent_id.upper())
+    rows = query.order_by(Benchmark.created_at.desc()).limit(limit).all()
+    return [r.to_dict() for r in rows]
+
+
+@router.post("/benchmarks/generate")
+def generate_benchmarks():
+    """
+    On-demand benchmark generation for every live agent/model pair — the same
+    work the daily Temporal schedule does (workflows/cron_workflow.py), useful
+    for testing/demo without waiting a day.
+    """
+    generated, skipped = [], []
+    for agent_id, model_name in AGENT_MODELS.items():
+        benchmark = evaluator.generate_benchmark(agent_id, model_name)
+        (generated if benchmark else skipped).append(f"{agent_id}/{model_name}")
+    return {"generated": generated, "skipped": skipped}

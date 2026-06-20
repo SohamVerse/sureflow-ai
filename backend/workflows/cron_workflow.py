@@ -11,7 +11,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from workflows.activities import run_scheduled_pipeline_activity
+    from workflows.activities import run_scheduled_pipeline_activity, generate_benchmarks_activity
 
 
 @workflow.defn
@@ -21,5 +21,18 @@ class ScheduledPipelineWorkflow:
         return await workflow.execute_activity(
             run_scheduled_pipeline_activity,
             start_to_close_timeout=timedelta(minutes=10),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+
+@workflow.defn
+class BenchmarkGenerationWorkflow:
+    """Daily benchmark rollup — see evaluation/evaluator.py."""
+
+    @workflow.run
+    async def run(self) -> dict:
+        return await workflow.execute_activity(
+            generate_benchmarks_activity,
+            start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )

@@ -2,23 +2,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, FileText, Users, Network,
-  BarChart3, Database, Zap, Brain, ShieldCheck,
-  Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb,
+  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb,
 } from 'lucide-react';
 import { useSureflowStore } from '@/lib/store';
 import { useEffect } from 'react';
-
-const SALES_NAV = [
-  { href: '/',          label: 'Command Center',   icon: LayoutDashboard },
-  { href: '/brains',    label: 'Brain Roster',     icon: Brain,       badge: 'V2' },
-  { href: '/content',   label: 'Content Pipeline', icon: FileText },
-  { href: '/leads',     label: 'Lead Pipeline',    icon: Users },
-  { href: '/agents',    label: 'Agent Console',    icon: Network },
-  { href: '/approvals', label: 'Approval Center',  icon: ShieldCheck, highlight: true },
-  { href: '/analytics', label: 'Analytics',        icon: BarChart3 },
-  { href: '/vault',     label: 'Knowledge Vault',  icon: Database },
-];
 
 const INDUSTRIAL_NAV = [
   { href: '/industrial',            label: 'Plant Overview',     icon: Factory },
@@ -31,35 +18,32 @@ const INDUSTRIAL_NAV = [
 ];
 
 const BRAIN_COLORS: Record<string, string> = {
-  CEO: '#6366f1', CMO: '#06b6d4', RESEARCH: '#f59e0b',
-  SDR: '#10b981', AE: '#ec4899', RISK: '#ef4444',
-  EMAIL: '#8b5cf6', ANALYST: '#fb923c',
-  DOC_INTEL: '#3b82f6', KG_AGENT: '#a855f7', SEARCH: '#14b8a6',
-  MAINTENANCE: '#f97316', LESSONS: '#eab308', COMPLIANCE: '#06b6d4',
+  DOC_INTELLIGENCE: '#3b82f6',
+  KG_AGENT: '#a855f7',
+  SEARCH_AGENT: '#14b8a6',
+  MAINTENANCE: '#f97316',
+  LESSONS_LEARNED: '#eab308',
+  COMPLIANCE: '#06b6d4',
 };
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { agents, fetchAgents, pendingApprovals, fetchPendingApprovals } = useSureflowStore();
+  const { agents, fetchAgents } = useSureflowStore();
 
   useEffect(() => {
     fetchAgents();
-    if (fetchPendingApprovals) fetchPendingApprovals();
     const interval = setInterval(() => {
       fetchAgents();
-      if (fetchPendingApprovals) fetchPendingApprovals();
     }, 5000);
     return () => clearInterval(interval);
-  }, [fetchAgents, fetchPendingApprovals]);
+  }, [fetchAgents]);
 
   const workingCount = agents.filter(a => a.status === 'working').length;
 
-  const renderNavItem = ({ href, label, icon: Icon, badge, highlight }: any) => {
-    const isActive = href === '/'
-      ? pathname === '/'
-      : href === '/industrial'
-        ? pathname === '/industrial'
-        : pathname.startsWith(href);
+  const renderNavItem = ({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Factory }) => {
+    const isActive = href === '/industrial'
+      ? pathname === '/industrial'
+      : pathname.startsWith(href);
     return (
       <Link
         key={href}
@@ -73,18 +57,8 @@ export function Sidebar() {
           borderLeft: isActive ? '2px solid #6366f1' : '2px solid transparent',
         }}
       >
-        <Icon size={16} style={{ color: isActive ? '#818cf8' : highlight ? '#f59e0b' : 'var(--text-muted)' }} />
+        <Icon size={16} style={{ color: isActive ? '#818cf8' : 'var(--text-muted)' }} />
         <span className="flex-1">{label}</span>
-        {badge && (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>
-            {badge}
-          </span>
-        )}
-        {href === '/approvals' && pendingApprovals > 0 && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#f59e0b', color: '#000' }}>
-            {pendingApprovals}
-          </span>
-        )}
       </Link>
     );
   };
@@ -109,25 +83,14 @@ export function Sidebar() {
         <div>
           <div className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>SureFlow</div>
           <div className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-            Agentic OS
-            <span className="px-1 rounded text-[9px] font-bold" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>V3</span>
+            Industrial Intelligence
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {/* Sales Section */}
-        <div className="nav-section-label">Sales & Marketing</div>
-        {SALES_NAV.map(renderNavItem)}
-
-        {/* Industrial Section */}
-        <div className="nav-section-label" style={{ marginTop: '8px' }}>
-          <span className="flex items-center gap-1">
-            Industrial Intelligence
-            <span className="px-1 rounded text-[8px] font-bold" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa' }}>NEW</span>
-          </span>
-        </div>
+        <div className="nav-section-label">Industrial Intelligence</div>
         {INDUSTRIAL_NAV.map(renderNavItem)}
       </nav>
 

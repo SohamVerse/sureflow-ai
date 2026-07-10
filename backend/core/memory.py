@@ -125,26 +125,6 @@ class MemoryStore:
         except Exception:
             return []
 
-    def get_voice_profile(self, query: str = "") -> str:
-        results = self.query_semantic("01-voice", query or "brand voice tone style", n_results=3)
-        return "\n".join(r["content"] for r in results) or "Professional, confident, data-driven tone."
-
-    def get_icp(self, query: str = "") -> str:
-        results = self.query_semantic("02-icp", query or "ideal customer profile", n_results=3)
-        return "\n".join(r["content"] for r in results) or "B2B SaaS decision-makers and founders."
-
-    def get_content_pillars(self, query: str = "") -> str:
-        results = self.query_semantic("04-content-pillars", query, n_results=3)
-        return "\n".join(r["content"] for r in results) or "Thought leadership, product demos, case studies."
-
-    def get_research_vault(self, query: str = "") -> str:
-        results = self.query_semantic("05-research", query, n_results=4)
-        return "\n".join(r["content"] for r in results) or "No existing research data."
-
-    def get_what_works(self, query: str = "") -> str:
-        results = self.query_semantic("06-what-works", query, n_results=2)
-        return "\n".join(r["content"] for r in results) or "No performance history available."
-
     # ── Memory Summary ─────────────────────────────────────────────────────────
 
     def get_memory_summary(self, agent_id: str) -> dict:

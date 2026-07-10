@@ -7,8 +7,8 @@ Traces export via OTLP to Jaeger (docker-compose service `jaeger`, ports
 
 See the Phase 6 plan for what's deliberately *not* built here (MCP
 reliability, agent drift detection, confidence calibration) — those need real
-signals this system doesn't have yet; see evaluation/evaluator.py and
-meta_learning/brain.py for the same principle applied in earlier phases.
+signals this system doesn't have yet; see evaluation/evaluator.py for the
+same principle applied elsewhere.
 """
 from __future__ import annotations
 import logging

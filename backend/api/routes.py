@@ -84,7 +84,7 @@ def health_check():
 
 @router.get("/agents/status")
 def agent_status():
-    """Return current model config and status for all V2 Brains."""
+    """Return current model config and status for all V2 + Industrial Brains."""
     from core.config import settings
     return {
         "agents": [
@@ -96,6 +96,13 @@ def agent_status():
             {"id": "RISK",     "name": "Risk Analysis Brain",   "model": settings.RISK_MODEL,      "status": "idle", "role": "Risk & Veto Authority"},
             {"id": "EMAIL",    "name": "Email Marketing Brain", "model": settings.EMAIL_MODEL,     "status": "idle", "role": "Outreach & Nurture"},
             {"id": "ANALYST",  "name": "Business Analyst Brain","model": settings.ANALYST_MODEL,   "status": "idle", "role": "KPI & Analytics"},
+            # Industrial Intelligence Agents (Phase 2)
+            {"id": "DOC_INTELLIGENCE", "name": "Document Intelligence Brain", "model": settings.DOC_INTELLIGENCE_MODEL, "status": "idle", "role": "Document Processing & Entity Extraction"},
+            {"id": "KG_AGENT",         "name": "Knowledge Graph Brain",       "model": settings.KG_AGENT_MODEL,         "status": "idle", "role": "Entity Resolution & Graph Updates"},
+            {"id": "SEARCH_AGENT",     "name": "Industrial Copilot",          "model": settings.SEARCH_AGENT_MODEL,     "status": "idle", "role": "Hybrid Search & Synthesis"},
+            {"id": "MAINTENANCE",      "name": "Maintenance Intelligence",    "model": settings.MAINTENANCE_MODEL,      "status": "idle", "role": "RCA & Failure Prediction"},
+            {"id": "LESSONS_LEARNED",  "name": "Lessons Learned Brain",       "model": settings.LESSONS_LEARNED_MODEL,  "status": "idle", "role": "Incident Analysis & Warnings"},
+            {"id": "COMPLIANCE",       "name": "Compliance Brain",            "model": settings.COMPLIANCE_MODEL,       "status": "idle", "role": "Regulatory Gap Analysis"},
         ]
     }
 

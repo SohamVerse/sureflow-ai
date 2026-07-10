@@ -7,7 +7,18 @@ and polls the task queue for workflow/activity work.
 """
 import asyncio
 import logging
+import sys
 from datetime import timedelta
+
+# Agent node functions (agents/graph.py) print emoji status lines. On Windows,
+# this worker's stdout defaults to the system codepage (e.g. cp1252) rather
+# than UTF-8, which raises UnicodeEncodeError on the first emoji print and
+# fails the activity (this crashed the very first scheduled pipeline run).
+# Reconfiguring here makes stdout/stderr tolerant of any Unicode regardless
+# of how this process is launched or its output redirected.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from temporalio.client import (
     Client,
@@ -21,6 +32,24 @@ from temporalio.worker import Worker
 
 from workflows.activities import run_scheduled_pipeline_activity, generate_benchmarks_activity
 from workflows.cron_workflow import ScheduledPipelineWorkflow, BenchmarkGenerationWorkflow
+
+# Industrial workflows and activities (Phase 3)
+from workflows.industrial_activities import (
+    ocr_extract_activity,
+    doc_intelligence_activity,
+    embed_and_store_activity,
+    update_industrial_graph_activity,
+    maintenance_analysis_activity,
+    record_work_order_activity,
+    lessons_learned_activity,
+    compliance_audit_activity,
+    copilot_query_activity,
+)
+from workflows.industrial_workflows import (
+    DocumentIngestionWorkflow,
+    MaintenanceLifecycleWorkflow,
+    LessonsLearnedWorkflow,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("companyos.worker")
@@ -80,8 +109,28 @@ async def main():
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
-        workflows=[ScheduledPipelineWorkflow, BenchmarkGenerationWorkflow],
-        activities=[run_scheduled_pipeline_activity, generate_benchmarks_activity],
+        workflows=[
+            ScheduledPipelineWorkflow,
+            BenchmarkGenerationWorkflow,
+            # Industrial workflows (Phase 3)
+            DocumentIngestionWorkflow,
+            MaintenanceLifecycleWorkflow,
+            LessonsLearnedWorkflow,
+        ],
+        activities=[
+            run_scheduled_pipeline_activity,
+            generate_benchmarks_activity,
+            # Industrial activities (Phase 3)
+            ocr_extract_activity,
+            doc_intelligence_activity,
+            embed_and_store_activity,
+            update_industrial_graph_activity,
+            maintenance_analysis_activity,
+            record_work_order_activity,
+            lessons_learned_activity,
+            compliance_audit_activity,
+            copilot_query_activity,
+        ],
     )
     logger.info(f"🚀 CompanyOS Temporal Worker started on task queue '{TASK_QUEUE}'.")
     await worker.run()
@@ -89,3 +138,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

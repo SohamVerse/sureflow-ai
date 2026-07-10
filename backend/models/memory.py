@@ -14,6 +14,10 @@ class EpisodicMemory(Base):
     output_summary = Column(Text, nullable=False)
     confidence = Column(Integer, default=50)
     risk_level = Column(String(20), default="medium")
+    # Industrial extension: tie episodes to specific equipment
+    equipment_tag = Column(String(100), nullable=True, index=True)
+    # "agent_run" (default), "maintenance", "inspection", "incident_rca"
+    context_type = Column(String(50), nullable=True, default="agent_run")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -26,4 +30,12 @@ class ReflectionMemory(Base):
     task_context = Column(String(300), nullable=False)
     failure_reason = Column(Text, nullable=False)
     lesson = Column(Text, nullable=False)
+    # Industrial extension: tie reflections to equipment and incidents
+    equipment_tag = Column(String(100), nullable=True, index=True)
+    incident_id = Column(String(100), nullable=True)
+    # "agent_failure" (default), "operational_failure", "safety_incident", "near_miss"
+    category = Column(String(50), nullable=True, default="agent_failure")
+    # Where the lesson originated: "agent", "incident_report", "capa", "operator_feedback"
+    source = Column(String(50), nullable=True, default="agent")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+

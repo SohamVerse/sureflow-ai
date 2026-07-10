@@ -35,6 +35,13 @@ AGENT_MODELS = {
     "AE": settings.AE_MODEL,
     "RISK": settings.RISK_MODEL,
     "EMAIL": settings.EMAIL_MODEL,
+    # Industrial Intelligence Agents (Phase 2)
+    "DOC_INTELLIGENCE": settings.DOC_INTELLIGENCE_MODEL,
+    "KG_AGENT": settings.KG_AGENT_MODEL,
+    "SEARCH_AGENT": settings.SEARCH_AGENT_MODEL,
+    "MAINTENANCE": settings.MAINTENANCE_MODEL,
+    "LESSONS_LEARNED": settings.LESSONS_LEARNED_MODEL,
+    "COMPLIANCE": settings.COMPLIANCE_MODEL,
 }
 
 

@@ -352,3 +352,344 @@ body {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INDUSTRIAL INTELLIGENCE THEME (Phase 4)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Industrial Accent Colors ─────────────────────────────────────────────────── */
+:root {
+  --ind-amber: #f59e0b;
+  --ind-steel: #3b82f6;
+  --ind-danger: #ef4444;
+  --ind-safety: #22c55e;
+  --ind-purple: #a855f7;
+  --ind-orange: #f97316;
+  --ind-cyan: #06b6d4;
+  --ind-bg-card: rgba(17, 24, 39, 0.6);
+}
+
+/* ── Equipment Status Badges ──────────────────────────────────────────────────── */
+.badge-operational { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+.badge-warning     { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+.badge-critical    { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); animation: pulse-red 2s infinite; }
+.badge-offline     { background: rgba(100,116,139,0.12); color: #94a3b8; border: 1px solid rgba(100,116,139,0.25); }
+
+/* ── Industrial Card ──────────────────────────────────────────────────────────── */
+.industrial-card {
+  background: var(--ind-bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.industrial-card:hover {
+  border-color: rgba(59,130,246,0.3);
+  box-shadow: 0 8px 32px rgba(59,130,246,0.08);
+}
+
+/* ── Sensor Gauge ─────────────────────────────────────────────────────────────── */
+.sensor-gauge {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+.sensor-gauge-ring {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transform: rotate(-135deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sensor-gauge-bg {
+  stroke: rgba(255,255,255,0.06);
+}
+.sensor-gauge-normal { stroke: #22c55e; filter: drop-shadow(0 0 4px rgba(34,197,94,0.4)); }
+.sensor-gauge-warning { stroke: #f59e0b; filter: drop-shadow(0 0 4px rgba(245,158,11,0.4)); }
+.sensor-gauge-critical { stroke: #ef4444; filter: drop-shadow(0 0 6px rgba(239,68,68,0.5)); animation: gauge-pulse 1.5s infinite; }
+
+@keyframes gauge-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(239,68,68,0.5)); }
+  50% { filter: drop-shadow(0 0 12px rgba(239,68,68,0.8)); }
+}
+
+/* ── Copilot Chat ─────────────────────────────────────────────────────────────── */
+.copilot-msg-user {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.08));
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 16px 16px 4px 16px;
+  padding: 14px 18px;
+  max-width: 80%;
+  margin-left: auto;
+  animation: msgSlideIn 0.3s ease;
+}
+.copilot-msg-ai {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px 16px 16px 4px;
+  padding: 14px 18px;
+  max-width: 85%;
+  animation: msgSlideIn 0.3s ease;
+}
+.copilot-msg-ai pre {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.copilot-msg-ai code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: rgba(99,102,241,0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+@keyframes msgSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Citation Card ────────────────────────────────────────────────────────────── */
+.citation-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.2);
+  font-size: 11px;
+  color: #60a5fa;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.citation-card:hover {
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.4);
+}
+
+/* ── Asset Timeline ───────────────────────────────────────────────────────────── */
+.timeline-container {
+  position: relative;
+  padding-left: 32px;
+}
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(99,102,241,0.05));
+}
+.timeline-node {
+  position: relative;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  animation: fadeInUp 0.3s ease forwards;
+}
+.timeline-node:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(99,102,241,0.3);
+}
+.timeline-node::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #6366f1;
+  background: var(--bg-primary);
+}
+.timeline-node.type-incident::before { border-color: #ef4444; background: rgba(239,68,68,0.2); }
+.timeline-node.type-work_order::before { border-color: #f59e0b; background: rgba(245,158,11,0.2); }
+.timeline-node.type-inspection::before { border-color: #22c55e; background: rgba(34,197,94,0.2); }
+
+/* ── Plant Hierarchy Tree ─────────────────────────────────────────────────────── */
+.hierarchy-tree {
+  padding-left: 0;
+}
+.hierarchy-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+}
+.hierarchy-tree-node:hover {
+  background: rgba(255,255,255,0.04);
+}
+.hierarchy-tree-children {
+  padding-left: 20px;
+  border-left: 1px solid rgba(255,255,255,0.06);
+  margin-left: 10px;
+}
+
+/* ── Upload Dropzone ──────────────────────────────────────────────────────────── */
+.upload-dropzone {
+  border: 2px dashed rgba(99,102,241,0.3);
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  background: rgba(99,102,241,0.02);
+}
+.upload-dropzone:hover,
+.upload-dropzone.dragging {
+  border-color: rgba(99,102,241,0.6);
+  background: rgba(99,102,241,0.06);
+  box-shadow: 0 0 32px rgba(99,102,241,0.1) inset;
+}
+.upload-dropzone.dragging {
+  transform: scale(1.01);
+}
+
+/* ── Upload Progress Steps ────────────────────────────────────────────────────── */
+.upload-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+.upload-step.active {
+  background: rgba(99,102,241,0.08);
+  color: var(--text-primary);
+}
+.upload-step.done {
+  background: rgba(34,197,94,0.06);
+  color: #22c55e;
+}
+.upload-step.pending {
+  color: var(--text-muted);
+}
+
+/* ── Analysis Result Card ─────────────────────────────────────────────────────── */
+.analysis-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+.analysis-card:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+.analysis-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Severity indicators ──────────────────────────────────────────────────────── */
+.severity-low      { color: #22c55e; }
+.severity-medium   { color: #f59e0b; }
+.severity-high     { color: #ef4444; }
+.severity-critical { color: #dc2626; font-weight: 700; animation: pulse-red 1.5s infinite; }
+
+/* ── Progress Ring (for audit readiness score) ────────────────────────────────── */
+.progress-ring {
+  transform: rotate(-90deg);
+}
+.progress-ring-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.06);
+  stroke-width: 8;
+}
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Copilot suggested prompts ────────────────────────────────────────────────── */
+.suggested-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.suggested-prompt:hover {
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.3);
+  color: var(--text-primary);
+}
+
+/* ── Nav section divider ──────────────────────────────────────────────────────── */
+.nav-section-label {
+  padding: 16px 12px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Industrial data flow animation ───────────────────────────────────────────── */
+@keyframes dataFlow {
+  0% { opacity: 0.3; transform: translateX(-4px); }
+  50% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0.3; transform: translateX(4px); }
+}
+.data-flow-indicator {
+  animation: dataFlow 2s ease-in-out infinite;
+}
+
+/* ── Sensor pulse animation ───────────────────────────────────────────────────── */
+@keyframes sensorPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+}
+.sensor-live {
+  animation: sensorPulse 2s ease infinite;
+}
+
+/* ── Markdown rendering in copilot ────────────────────────────────────────────── */
+.copilot-markdown h1, .copilot-markdown h2, .copilot-markdown h3 {
+  color: var(--text-primary);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.copilot-markdown h1 { font-size: 18px; font-weight: 700; }
+.copilot-markdown h2 { font-size: 16px; font-weight: 600; }
+.copilot-markdown h3 { font-size: 14px; font-weight: 600; }
+.copilot-markdown p { margin-bottom: 8px; line-height: 1.6; }
+.copilot-markdown ul, .copilot-markdown ol { padding-left: 20px; margin-bottom: 8px; }
+.copilot-markdown li { margin-bottom: 4px; line-height: 1.5; }
+.copilot-markdown strong { color: var(--text-primary); font-weight: 600; }
+.copilot-markdown em { color: var(--text-secondary); }
+.copilot-markdown blockquote {
+  border-left: 3px solid rgba(99,102,241,0.4);
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+

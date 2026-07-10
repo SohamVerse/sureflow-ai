@@ -3,6 +3,7 @@ Embeddings pipeline for the Knowledge Vault.
 Handles ingestion of documents into pgvector-backed collections using Ollama embeddings.
 """
 import hashlib
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -23,6 +24,19 @@ VAULT_COLLECTIONS = {
     "05-social-media": "Recent social media trends and algorithm updates",
     "06-brand-voice": "Brand voice for a premium software development agency",
 }
+
+# Industrial Intelligence collections (Phase 1 extension)
+INDUSTRIAL_COLLECTIONS = {
+    "10-oem-manuals": "OEM equipment manuals and technical documentation",
+    "11-compliance-regs": "OSHA, ISO, Factory Act, and regulatory texts",
+    "12-sops": "Internal Standard Operating Procedures",
+    "13-maintenance-logs": "Historical maintenance and work order records",
+    "14-inspection-records": "Equipment inspection reports and audit findings",
+    "15-incident-reports": "Safety incidents, near-misses, and CAPA reports",
+}
+
+# Combined registry for unified stat reporting
+ALL_COLLECTIONS = {**VAULT_COLLECTIONS, **INDUSTRIAL_COLLECTIONS}
 
 
 def get_embeddings():
@@ -90,13 +104,25 @@ def ingest_document(file_path: str, collection_name: str, metadata: Optional[dic
     }
 
 
+@lru_cache(maxsize=256)
+def _embed_query_cached(query: str) -> tuple[float, ...]:
+    """
+    Cached query embedding — the Copilot and dashboards re-query the same
+    handful of collections with overlapping/repeated questions, and each
+    embed_query() call is a network round-trip to Ollama. Keyed on the exact
+    query text, since embeddings are deterministic for a given model/text.
+    """
+    embedder = get_embeddings()
+    vector = skill_registry.execute("ollama.embed", lambda: embedder.embed_query(query))
+    return tuple(vector)
+
+
 def query_collection(collection_name: str, query: str, n_results: int = 5) -> list[dict]:
     """
     Semantic search over a collection via pgvector cosine distance.
     Returns list of matching document chunks with metadata.
     """
-    embedder = get_embeddings()
-    query_embedding = skill_registry.execute("ollama.embed", lambda: embedder.embed_query(query))
+    query_embedding = list(_embed_query_cached(query))
 
     db = SessionLocal()
     try:
@@ -122,11 +148,11 @@ def query_collection(collection_name: str, query: str, n_results: int = 5) -> li
 
 
 def get_vault_stats() -> dict:
-    """Return document counts for all Knowledge Vault collections."""
+    """Return document counts for all Knowledge Vault collections (including industrial)."""
     db = SessionLocal()
     try:
         stats = {}
-        for collection_name in VAULT_COLLECTIONS.keys():
+        for collection_name in ALL_COLLECTIONS.keys():
             stats[collection_name] = (
                 db.query(VaultDocument)
                 .filter(VaultDocument.collection == collection_name)

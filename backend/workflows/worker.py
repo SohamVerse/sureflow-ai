@@ -1,19 +1,18 @@
 """
-Temporal Worker — CompanyOS V3.1 Layer 0 Workflow Orchestration.
+Temporal Worker — SureFlow OS Industrial Intelligence Workflow Orchestration.
 
-Run this instead of `python clawbot.py`. Connects to the dockerized Temporal
-server, ensures the hourly schedule exists (idempotent — safe to restart),
-and polls the task queue for workflow/activity work.
+Connects to the dockerized Temporal server, ensures the daily benchmark
+schedule exists (idempotent — safe to restart), and polls the task queue
+for workflow/activity work.
 """
 import asyncio
 import logging
 import sys
 from datetime import timedelta
 
-# Agent node functions (agents/graph.py) print emoji status lines. On Windows,
-# this worker's stdout defaults to the system codepage (e.g. cp1252) rather
-# than UTF-8, which raises UnicodeEncodeError on the first emoji print and
-# fails the activity (this crashed the very first scheduled pipeline run).
+# Log lines below use emoji. On Windows, this worker's stdout defaults to the
+# system codepage (e.g. cp1252) rather than UTF-8, which raises
+# UnicodeEncodeError on the first emoji print and crashes the process.
 # Reconfiguring here makes stdout/stderr tolerant of any Unicode regardless
 # of how this process is launched or its output redirected.
 if hasattr(sys.stdout, "reconfigure"):
@@ -30,8 +29,8 @@ from temporalio.client import (
 )
 from temporalio.worker import Worker
 
-from workflows.activities import run_scheduled_pipeline_activity, generate_benchmarks_activity
-from workflows.cron_workflow import ScheduledPipelineWorkflow, BenchmarkGenerationWorkflow
+from workflows.shared_activities import generate_benchmarks_activity
+from workflows.cron_workflow import BenchmarkGenerationWorkflow
 
 # Industrial workflows and activities (Phase 3)
 from workflows.industrial_activities import (
@@ -88,15 +87,6 @@ async def ensure_schedule(
 async def main():
     client = await Client.connect(TEMPORAL_ADDRESS)
 
-    # Hourly pipeline run — replaces clawbot.py, preserves its "run once on start".
-    await ensure_schedule(
-        client,
-        schedule_id="companyos-hourly-pipeline",
-        workflow_run_fn=ScheduledPipelineWorkflow.run,
-        workflow_id="companyos-scheduled-pipeline",
-        interval=timedelta(hours=1),
-        trigger_immediately=True,
-    )
     # Daily benchmark rollup — see evaluation/evaluator.py.
     await ensure_schedule(
         client,
@@ -110,7 +100,6 @@ async def main():
         client,
         task_queue=TASK_QUEUE,
         workflows=[
-            ScheduledPipelineWorkflow,
             BenchmarkGenerationWorkflow,
             # Industrial workflows (Phase 3)
             DocumentIngestionWorkflow,
@@ -118,7 +107,6 @@ async def main():
             LessonsLearnedWorkflow,
         ],
         activities=[
-            run_scheduled_pipeline_activity,
             generate_benchmarks_activity,
             # Industrial activities (Phase 3)
             ocr_extract_activity,
@@ -132,10 +120,9 @@ async def main():
             copilot_query_activity,
         ],
     )
-    logger.info(f"🚀 CompanyOS Temporal Worker started on task queue '{TASK_QUEUE}'.")
+    logger.info(f"🚀 SureFlow Temporal Worker started on task queue '{TASK_QUEUE}'.")
     await worker.run()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

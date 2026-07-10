@@ -179,51 +179,6 @@ body {
   padding: 16px;
 }
 
-/* Agent node (React Flow) */
-.agent-node {
-  background: rgba(17,24,39,0.9);
-  border: 1px solid rgba(99,102,241,0.4);
-  border-radius: 14px;
-  padding: 14px 18px;
-  min-width: 180px;
-  box-shadow: 0 4px 24px rgba(99,102,241,0.15);
-  backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
-}
-.agent-node:hover {
-  border-color: rgba(99,102,241,0.8);
-  box-shadow: 0 6px 32px rgba(99,102,241,0.3);
-}
-.agent-node.selected {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
-}
-
-/* Glow effects */
-.glow-indigo { box-shadow: 0 0 24px rgba(99,102,241,0.2); }
-.glow-cyan   { box-shadow: 0 0 24px rgba(6,182,212,0.2); }
-.glow-green  { box-shadow: 0 0 24px rgba(16,185,129,0.2); }
-
-/* React Flow overrides */
-.react-flow__background { background: var(--bg-primary) !important; }
-.react-flow__edge-path { stroke: rgba(99,102,241,0.6) !important; stroke-width: 2 !important; }
-.react-flow__edge-path:hover { stroke: #6366f1 !important; }
-.react-flow__controls {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 12px !important;
-}
-.react-flow__controls-button {
-  background: transparent !important;
-  border-color: var(--border) !important;
-  color: var(--text-secondary) !important;
-}
-.react-flow__minimap {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 12px !important;
-}
-
 /* ── V2: Confidence bar ─────────────────────────────────────────────────────── */
 .confidence-bar {
   height: 4px;
@@ -237,84 +192,9 @@ body {
   transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ── V2: Risk level indicators ───────────────────────────────────────────────── */
-.risk-low    { color: #10b981; }
-.risk-medium { color: #f59e0b; }
-.risk-high   { color: #ef4444; }
-.risk-critical { color: #dc2626; animation: pulse-red 2s infinite; }
-
 @keyframes pulse-red {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-}
-
-/* ── V2: Veto card ───────────────────────────────────────────────────────────── */
-.veto-card {
-  border: 1px solid rgba(239,68,68,0.4);
-  box-shadow: 0 0 24px rgba(239,68,68,0.1), 0 0 0 1px rgba(239,68,68,0.05) inset;
-}
-
-/* ── V2: Activity feed ───────────────────────────────────────────────────────── */
-.activity-feed-item {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  animation: slideInRight 0.3s ease;
-}
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(12px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* ── V2: Brain card glow ─────────────────────────────────────────────────────── */
-.brain-card-active {
-  animation: brainPulse 3s ease infinite;
-}
-
-@keyframes brainPulse {
-  0%, 100% { box-shadow: 0 0 16px rgba(99,102,241,0.1); }
-  50% { box-shadow: 0 0 32px rgba(99,102,241,0.25); }
-}
-
-/* ── V2: Approval center ─────────────────────────────────────────────────────── */
-.approval-card {
-  transition: all 0.25s ease;
-}
-.approval-card:hover {
-  transform: translateY(-2px);
-}
-.approval-approve-btn {
-  background: rgba(16,185,129,0.1);
-  border: 1px solid rgba(16,185,129,0.3);
-  color: #10b981;
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.approval-approve-btn:hover {
-  background: rgba(16,185,129,0.2);
-  transform: translateY(-1px);
-}
-.approval-reject-btn {
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #ef4444;
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.approval-reject-btn:hover {
-  background: rgba(239,68,68,0.2);
-  transform: translateY(-1px);
 }
 
 /* ── V2: Debate log ──────────────────────────────────────────────────────────── */

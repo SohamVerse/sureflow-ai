@@ -17,25 +17,10 @@ class Settings(BaseSettings):
     # Gemini
     GEMINI_API_KEY: str | None = None
 
-    # Neo4j (Strategic Knowledge Graph)
+    # Neo4j (Industrial Knowledge Graph)
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "sureflow_password"
-
-    # ── Agent Brain Models ────────────────────────────────────────────────────
-    # gemini-2.5-pro has a 0-request free-tier quota on this key (confirmed via
-    # 429 RESOURCE_EXHAUSTED) and ~40s latency even on trivial prompts due to
-    # extended thinking — gemini-2.5-flash is used wherever Gemini is needed.
-    CEO_MODEL: str = "gemini-1.5-pro"
-    CMO_MODEL: str = "gemini-1.5-pro"
-    RESEARCH_MODEL: str = "gemini-1.5-pro"
-    SDR_MODEL: str = "gemini-1.5-pro"
-    AE_MODEL: str = "gemini-1.5-pro"
-    ANALYST_MODEL: str = "gemini-1.5-pro"
-    EMAIL_MODEL: str = "gemini-2.5-flash"       # cheap/fast tier — high volume outreach drafting
-    RISK_MODEL: str = "gemini-2.5-flash"        # NEW: Risk Analysis Brain — see note below
-    POST_GEN_MODEL: str = "gemini-2.5-flash"    # NEW: Post Generation Brain
-    AUTOMATION_MODEL: str = "gemini-2.5-flash"  # NEW: Automation Brain
 
     # ── Industrial Intelligence Agent Models (Phase 2) ─────────────────────────
     DOC_INTELLIGENCE_MODEL: str = "gemini-1.5-pro"    # Document Intelligence — OCR + entity extraction
@@ -52,11 +37,6 @@ class Settings(BaseSettings):
     # fallback silently did nothing. Override via .env if you have a different
     # model pulled.
     FALLBACK_MODEL: str = "llama3.2"  # local Ollama model used when a primary model errors
-
-    # ── Confidence Thresholds ─────────────────────────────────────────────────
-    AUTO_APPROVE_CONFIDENCE: int = 75      # >= this → auto approve
-    MANAGER_APPROVAL_CONFIDENCE: int = 50  # >= this → manager approval
-    # < MANAGER threshold → CEO approval
 
     # ── OCR (Phase 5) ──────────────────────────────────────────────────────────
     # Path to the Tesseract binary — required on Windows where it isn't on PATH.

@@ -1,66 +1,23 @@
 """
-FastAPI REST API routes for CompanyOS V2.
-Connects the Next.js frontend to the V2 LangGraph backend.
+FastAPI REST API routes for SureFlow OS — shared/core endpoints.
+Industrial Intelligence Platform endpoints live in api/industrial_routes.py.
 """
-import json
-import uuid
-from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core.database import get_db, SessionLocal
+from core.database import get_db
 from core.memory import MemoryStore
-from core.constitution import constitution, DEFAULT_CONSTITUTION
-from models.pipeline import PipelineItem, PipelineStatus, AgentType
-from models.leads import Lead, LeadStatus, BuyingStage
-from agents.graph import run_pipeline, stream_custom_pipeline, stream_pipeline
-from rag.embeddings import ingest_document, get_vault_stats, query_collection, VAULT_COLLECTIONS
 from evaluation.models import Evaluation, Benchmark, AgentRunError
 from evaluation.evaluator import evaluator, AGENT_MODELS
 from evaluation.metrics import compute_campaign_summary
-from meta_learning.brain import meta_learning_brain
-from knowledge_graph.graph_store import knowledge_graph
-from core.mcp import mcp_client
 from skill_registry.registry import skill_registry
 
 router = APIRouter()
 
 
 # ─── Pydantic Schemas ──────────────────────────────────────────────────────────
-
-class RunPipelineRequest(BaseModel):
-    goal: str
-    lead_data: Optional[dict] = None
-
-
-class CustomPipelineRequest(BaseModel):
-    graph_json: str
-    goal: str
-    lead_data: Optional[dict] = None
-
-
-class UpdateStatusRequest(BaseModel):
-    status: str
-
-
-class CreateLeadRequest(BaseModel):
-    name: str
-    email: Optional[str] = None
-    company: Optional[str] = None
-    title: Optional[str] = None
-    linkedin_url: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class UpdateLeadRequest(BaseModel):
-    status: Optional[str] = None
-    buying_stage: Optional[str] = None
-    icp_score: Optional[float] = None
-    notes: Optional[str] = None
-
 
 class ReflectionRequest(BaseModel):
     agent_id: str
@@ -69,34 +26,19 @@ class ReflectionRequest(BaseModel):
     lesson: str
 
 
-class ProposeHeuristicsRequest(BaseModel):
-    weights: dict
-    reason: str
-    updated_by: str = "system"
-
-
 # ─── System Health ─────────────────────────────────────────────────────────────
 
 @router.get("/health")
 def health_check():
-    return {"status": "online", "service": "CompanyOS V2", "version": "2.0.0"}
+    return {"status": "online", "service": "SureFlow OS", "version": "2.0.0"}
 
 
 @router.get("/agents/status")
 def agent_status():
-    """Return current model config and status for all V2 + Industrial Brains."""
+    """Return current model config and status for all Industrial Intelligence Brains."""
     from core.config import settings
     return {
         "agents": [
-            {"id": "CEO",      "name": "CEO Brain",             "model": settings.CEO_MODEL,       "status": "idle", "role": "Executive Orchestrator"},
-            {"id": "CMO",      "name": "CMO Brain",             "model": settings.CMO_MODEL,       "status": "idle", "role": "Content & Marketing"},
-            {"id": "RESEARCH", "name": "Research Analyst Brain","model": settings.RESEARCH_MODEL,  "status": "idle", "role": "Market Intelligence"},
-            {"id": "SDR",      "name": "SDR Brain",             "model": settings.SDR_MODEL,       "status": "idle", "role": "Lead Qualification"},
-            {"id": "AE",       "name": "Account Executive Brain","model": settings.AE_MODEL,       "status": "idle", "role": "Deal Closing"},
-            {"id": "RISK",     "name": "Risk Analysis Brain",   "model": settings.RISK_MODEL,      "status": "idle", "role": "Risk & Veto Authority"},
-            {"id": "EMAIL",    "name": "Email Marketing Brain", "model": settings.EMAIL_MODEL,     "status": "idle", "role": "Outreach & Nurture"},
-            {"id": "ANALYST",  "name": "Business Analyst Brain","model": settings.ANALYST_MODEL,   "status": "idle", "role": "KPI & Analytics"},
-            # Industrial Intelligence Agents (Phase 2)
             {"id": "DOC_INTELLIGENCE", "name": "Document Intelligence Brain", "model": settings.DOC_INTELLIGENCE_MODEL, "status": "idle", "role": "Document Processing & Entity Extraction"},
             {"id": "KG_AGENT",         "name": "Knowledge Graph Brain",       "model": settings.KG_AGENT_MODEL,         "status": "idle", "role": "Entity Resolution & Graph Updates"},
             {"id": "SEARCH_AGENT",     "name": "Industrial Copilot",          "model": settings.SEARCH_AGENT_MODEL,     "status": "idle", "role": "Hybrid Search & Synthesis"},
@@ -107,481 +49,7 @@ def agent_status():
     }
 
 
-# ─── Pipeline (Content) ────────────────────────────────────────────────────────
-
-def _extract_approval_tier(brain_output: dict) -> str:
-    """Determine approval tier from V2 brain output confidence and risk."""
-    confidence = brain_output.get("confidence", 50)
-    risk = brain_output.get("risk_level", "medium")
-    if risk in ("high", "critical") or confidence < 40:
-        return "CEO_APPROVAL"
-    elif risk == "medium" or confidence < 70:
-        return "MANAGER_APPROVAL"
-    return "AUTO_APPROVE"
-
-
-def persist_pipeline_results(final_state: dict, goal: str, run_id: Optional[str] = None) -> list[str]:
-    """
-    Persist CMO/Research/Risk outputs from a completed pipeline run as PipelineItems.
-    Shared by the interactive SSE endpoint (trigger_pipeline) and the
-    Temporal-scheduled cron workflow (workflows/activities.py).
-
-    Also persists any agent_run_errors (CompanyOS V3.1 Layer 4 — "Failures"
-    tracking) so per-node failures survive past the single SSE response that
-    used to be their only visibility.
-    """
-    db = SessionLocal()
-    created_items = []
-    try:
-        for error_message in final_state.get("errors", []):
-            agent_id = error_message.split(" ")[0].strip("[]") if error_message else "UNKNOWN"
-            db.add(AgentRunError(run_id=run_id, agent_id=agent_id, error_message=error_message[:2000]))
-
-        risk_output = final_state.get("risk_output", {})
-        risk_score = risk_output.get("risk_dimensions", {}).get("campaign_failure_probability")
-        debate_log = final_state.get("debate_log", [])
-        constitution_violations = final_state.get("constitution_violations", [])
-
-        # Persist CMO output
-        if final_state.get("cmo_output"):
-            cmo = final_state["cmo_output"]
-            approval_tier = _extract_approval_tier(cmo)
-            # Auto-veto if Risk Brain vetoed
-            is_vetoed = risk_output.get("veto_decision", {}).get("vetoed", False)
-            status = PipelineStatus.VETOED if is_vetoed else PipelineStatus.PENDING
-
-            item = PipelineItem(
-                agent_type=AgentType.CMO,
-                status=status,
-                title=cmo.get("hook", goal)[:499],
-                content=cmo.get("body", ""),
-                platform=cmo.get("platform", "LinkedIn"),
-                stage=cmo.get("buying_stage", cmo.get("stage", "Awareness")),
-                meta_data=cmo,
-                confidence=cmo.get("confidence"),
-                risk_score=risk_score,
-                risk_level=cmo.get("risk_level"),
-                reasoning=cmo.get("reasoning", ""),
-                alternatives=cmo.get("alternatives", []),
-                approval_tier=approval_tier,
-                debate_log=debate_log,
-                constitution_violations=constitution_violations,
-                approval_required=approval_tier != "AUTO_APPROVE" or is_vetoed,
-            )
-            db.add(item)
-            created_items.append("CMO content")
-
-        # Persist Research output
-        if final_state.get("research_output"):
-            res = final_state["research_output"]
-            approval_tier = _extract_approval_tier(res)
-            item = PipelineItem(
-                agent_type=AgentType.RESEARCH,
-                status=PipelineStatus.PENDING,
-                title=res.get("executive_summary", res.get("summary", goal))[:499],
-                content=json.dumps(res),
-                platform="Internal",
-                stage="Research",
-                meta_data=res,
-                confidence=res.get("confidence"),
-                risk_level=res.get("risk_level"),
-                reasoning=res.get("reasoning", ""),
-                alternatives=res.get("alternatives", []),
-                approval_tier=approval_tier,
-                approval_required=False,
-            )
-            db.add(item)
-            created_items.append("Research report")
-
-        # Persist Risk output
-        if final_state.get("risk_output") and risk_output.get("go_no_go"):
-            item = PipelineItem(
-                agent_type=AgentType.RISK,
-                status=PipelineStatus.PENDING,
-                title=f"Risk Analysis: {risk_output.get('risk_summary', goal)[:450]}",
-                content=json.dumps(risk_output),
-                platform="Internal",
-                stage="Risk Assessment",
-                meta_data=risk_output,
-                confidence=risk_output.get("confidence"),
-                risk_score=risk_score,
-                risk_level=risk_output.get("risk_level"),
-                reasoning=risk_output.get("reasoning", ""),
-                approval_required=risk_output.get("veto_decision", {}).get("vetoed", False),
-            )
-            db.add(item)
-            created_items.append("Risk report")
-
-        db.commit()
-    finally:
-        db.close()
-
-    return created_items
-
-
-@router.post("/pipeline/run")
-async def trigger_pipeline(body: RunPipelineRequest):
-    """Trigger the V2 CEO Brain and stream outputs back via SSE."""
-
-    async def event_generator():
-        final_state = {}
-        run_id = None
-
-        async for event in stream_pipeline(body.goal, body.lead_data):
-            if event.get("event") == "run_started":
-                run_id = event.get("run_id")
-
-            update = event.get("update", {}) or {}
-            for key, val in update.items():
-                if isinstance(val, list):
-                    final_state[key] = final_state.get(key, []) + val
-                elif isinstance(val, dict):
-                    final_state[key] = {**(final_state.get(key, {})), **val}
-                else:
-                    final_state[key] = val
-
-            def _enc(obj):
-                if hasattr(obj, "model_dump"):
-                    return obj.model_dump()
-                if hasattr(obj, "dict"):
-                    return obj.dict()
-                return str(obj)
-
-            yield f"data: {json.dumps(event, default=_enc)}\n\n"
-
-        created_items = persist_pipeline_results(final_state, body.goal, run_id=run_id)
-
-        complete_event = {
-            "event": "complete",
-            "success": True,
-            "run_id": run_id,
-            "items_created": created_items,
-            "agents_run": final_state.get("completed_agents", []),
-            "errors": final_state.get("errors", []),
-            "debate_log": final_state.get("debate_log", []),
-            "approval_required": final_state.get("approval_required", False),
-            "risk_veto": final_state.get("risk_output", {}).get("veto_decision", {}),
-        }
-        yield f"data: {json.dumps(complete_event)}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@router.post("/pipeline/custom")
-async def trigger_custom_pipeline(body: CustomPipelineRequest):
-    """Run a user-defined agent graph and stream outputs back via SSE."""
-    
-    async def event_generator():
-        final_state = {}
-        async for event in stream_custom_pipeline(body.graph_json, body.goal, body.lead_data):
-            if event.get("event") == "error":
-                yield f"data: {json.dumps(event)}\n\n"
-                return
-                
-            update = event.get("update", {}) or {}
-            for key, val in update.items():
-                if isinstance(val, list):
-                    final_state[key] = final_state.get(key, []) + val
-                elif isinstance(val, dict):
-                    final_state[key] = {**(final_state.get(key, {})), **val}
-                else:
-                    final_state[key] = val
-                    
-            def _custom_encoder(obj):
-                if hasattr(obj, "model_dump"):
-                    return obj.model_dump()
-                if hasattr(obj, "dict"):
-                    return obj.dict()
-                return str(obj)
-
-            yield f"data: {json.dumps(event, default=_custom_encoder)}\n\n"
-
-        db = SessionLocal()
-        created_items = []
-        try:
-            if final_state.get("cmo_output"):
-                cmo = final_state["cmo_output"]
-                item = PipelineItem(
-                    agent_type=AgentType.CMO,
-                    status=PipelineStatus.PENDING,
-                    title=cmo.get("hook", body.goal)[:499],
-                    content=cmo.get("body", ""),
-                    platform=cmo.get("platform", "LinkedIn"),
-                    stage=cmo.get("stage", "Awareness"),
-                    meta_data=cmo,
-                )
-                db.add(item)
-                created_items.append("CMO content")
-
-            if final_state.get("research_output"):
-                res = final_state["research_output"]
-                item = PipelineItem(
-                    agent_type=AgentType.RESEARCH,
-                    status=PipelineStatus.PENDING,
-                    title=res.get("summary", body.goal)[:499],
-                    content=json.dumps(res),
-                    platform="Internal",
-                    stage="Research",
-                    meta_data=res,
-                )
-                db.add(item)
-                created_items.append("Research report")
-
-            db.commit()
-        finally:
-            db.close()
-
-        complete_event = {
-            "event": "complete",
-            "success": True,
-            "items_created": created_items,
-            "agents_run": [],
-            "errors": []
-        }
-        yield f"data: {json.dumps(complete_event)}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@router.get("/pipeline/items")
-def get_pipeline_items(status: Optional[str] = None, db: Session = Depends(get_db)):
-    """Fetch pipeline items, optionally filtered by status."""
-    query = db.query(PipelineItem)
-    if status:
-        query = query.filter(PipelineItem.status == status)
-    items = query.order_by(PipelineItem.created_at.desc()).all()
-    return [item.to_dict() for item in items]
-
-
-@router.patch("/pipeline/items/{item_id}/status")
-def update_item_status(item_id: uuid.UUID, body: UpdateStatusRequest, db: Session = Depends(get_db)):
-    """Approve, reject, or update the status of a pipeline item."""
-    item = db.query(PipelineItem).filter(PipelineItem.id == str(item_id)).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Pipeline item not found")
-
-    try:
-        item.status = PipelineStatus(body.status)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
-
-    if body.status == "approved":
-        item.approved_at = datetime.now(timezone.utc)
-
-    db.commit()
-    return item.to_dict()
-
-
-PLATFORM_TO_MCP_ACTION = {
-    "linkedin": ("linkedin", "post"),
-    "instagram": ("instagram", "post_reel"),
-}
-
-
-@router.post("/pipeline/items/{item_id}/post")
-def post_pipeline_item_mcp(item_id: uuid.UUID, db: Session = Depends(get_db)):
-    """
-    Publish content via MCP, routed through the TrustedSkillRegistry
-    (CompanyOS V3.1 Layer 6 — see skill_registry/registry.py). core/mcp.py's
-    MCPServer is still fully mocked (no real LinkedIn/Instagram API calls) —
-    this fixes the previous behavior, which never actually called it at all
-    and could not fail no matter what.
-    """
-    item = db.query(PipelineItem).filter(PipelineItem.id == str(item_id)).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Pipeline item not found")
-
-    if item.status != PipelineStatus.APPROVED:
-        raise HTTPException(status_code=400, detail="Item must be APPROVED before posting")
-
-    platform, action = PLATFORM_TO_MCP_ACTION.get((item.platform or "").lower(), ("linkedin", "post"))
-    params = {"content": item.content, "title": item.title}
-
-    result = skill_registry.execute(
-        f"mcp.{platform}.{action}", lambda: mcp_client.execute_tool(platform, action, params)
-    )
-    if result.get("status") == "error":
-        raise HTTPException(status_code=502, detail=f"MCP publish failed: {result.get('error')}")
-
-    item.status = PipelineStatus.POSTED
-    item.posted_at = datetime.now(timezone.utc)
-    item.meta_data = {**(item.meta_data or {}), "mcp_result": result}
-
-    db.commit()
-    return {"status": "success", "message": "Published via MCP", "item": item.to_dict()}
-
-
-@router.get("/pipeline/kpis")
-def get_kpis(db: Session = Depends(get_db)):
-    """Return high-level KPIs for the Command Center dashboard."""
-    from sqlalchemy import func
-    from datetime import timedelta
-
-    now = datetime.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
-
-    posts_this_week = db.query(PipelineItem).filter(
-        PipelineItem.status == PipelineStatus.POSTED,
-        PipelineItem.posted_at >= week_ago,
-    ).count()
-
-    active_leads = db.query(Lead).filter(
-        Lead.status.in_([LeadStatus.NEW, LeadStatus.IN_SEQUENCE])
-    ).count()
-
-    booked_calls = db.query(Lead).filter(Lead.status == LeadStatus.BOOKED).count()
-    pending_review = db.query(PipelineItem).filter(PipelineItem.status == PipelineStatus.PENDING).count()
-
-    return {
-        "posts_this_week": posts_this_week,
-        "active_leads": active_leads,
-        "calls_booked": booked_calls,
-        "pending_review": pending_review,
-    }
-
-
-# ─── Leads (CRM) ──────────────────────────────────────────────────────────────
-
-@router.get("/leads")
-def get_leads(status: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Lead)
-    if status:
-        query = query.filter(Lead.status == status)
-    leads = query.order_by(Lead.created_at.desc()).all()
-    return [lead.to_dict() for lead in leads]
-
-
-@router.post("/leads")
-def create_lead(body: CreateLeadRequest, db: Session = Depends(get_db)):
-    lead = Lead(**body.model_dump())
-    db.add(lead)
-    db.commit()
-    db.refresh(lead)
-    return lead.to_dict()
-
-
-@router.patch("/leads/{lead_id}")
-def update_lead(lead_id: uuid.UUID, body: UpdateLeadRequest, db: Session = Depends(get_db)):
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    update_data = body.model_dump(exclude_none=True)
-    for key, val in update_data.items():
-        setattr(lead, key, val)
-
-    db.commit()
-    return lead.to_dict()
-
-
-@router.post("/leads/{lead_id}/score")
-async def score_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Trigger SDR agent to score a specific lead."""
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    from agents.sales import sdr_score_lead
-    result = sdr_score_lead(lead.to_dict())
-
-    lead.icp_score = result.get("icp_score", lead.icp_score)
-    lead.buying_stage = result.get("buying_stage", lead.buying_stage)
-    lead.touchpoints = (lead.touchpoints or 0) + 1
-    lead.last_contacted_at = datetime.now(timezone.utc)
-    lead.meta_data = {**(lead.meta_data or {}), "last_sdr_output": result}
-
-    db.commit()
-    return {"lead": lead.to_dict(), "sdr_result": result}
-
-
-# ─── Knowledge Vault ──────────────────────────────────────────────────────────
-
-@router.get("/vault/stats")
-def vault_stats():
-    """Return document counts for all Knowledge Vault collections."""
-    stats = get_vault_stats()
-    collections = []
-    for name, description in VAULT_COLLECTIONS.items():
-        collections.append({
-            "id": name,
-            "name": name,
-            "description": description,
-            "document_count": stats.get(name, 0),
-        })
-    return {"collections": collections}
-
-
-@router.post("/vault/ingest")
-async def ingest_to_vault(
-    collection: str = Form(...),
-    file: UploadFile = File(...),
-):
-    """Upload and embed a document into a Knowledge Vault collection."""
-    import tempfile, os
-    if collection not in VAULT_COLLECTIONS:
-        raise HTTPException(status_code=400, detail=f"Unknown collection: {collection}")
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}") as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
-
-    try:
-        result = ingest_document(tmp_path, collection, metadata={"original_name": file.filename})
-    finally:
-        os.unlink(tmp_path)
-
-    return result
-
-
-@router.post("/vault/query")
-def query_vault(body: dict):
-    """Semantic search across a Knowledge Vault collection."""
-    collection = body.get("collection")
-    query = body.get("query")
-    n_results = body.get("n_results", 5)
-
-    if not collection or not query:
-        raise HTTPException(status_code=400, detail="collection and query are required")
-
-    results = query_collection(collection, query, n_results)
-    return {"results": results}
-
-
-# ─── Analytics ────────────────────────────────────────────────────────────────
-
-@router.get("/analytics")
-def get_analytics(db: Session = Depends(get_db)):
-    """Aggregate telemetry for the Analytics page."""
-    from sqlalchemy import func
-    from datetime import timedelta
-
-    now = datetime.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
-
-    total_posts = db.query(PipelineItem).filter(PipelineItem.status == PipelineStatus.POSTED).count()
-    total_leads = db.query(Lead).count()
-    qualified_leads = db.query(Lead).filter(Lead.icp_score >= 7.0).count()
-    replied_leads = db.query(Lead).filter(Lead.touchpoints > 0).count()
-
-    qualified_rate = round((qualified_leads / total_leads * 100), 1) if total_leads > 0 else 0
-    reply_rate = round((replied_leads / total_leads * 100), 1) if total_leads > 0 else 0
-
-    weekly_posts = db.query(PipelineItem).filter(
-        PipelineItem.status == PipelineStatus.POSTED,
-        PipelineItem.posted_at >= week_ago,
-    ).count()
-
-    return {
-        "weekly_reach": weekly_posts * 150,
-        "qualified_rate": qualified_rate,
-        "reply_rate": reply_rate,
-        "total_leads": total_leads,
-        "total_posts": total_posts,
-        "weekly_posts": weekly_posts,
-    }
-
-
-# ─── V2: Memory API ───────────────────────────────────────────────────────────
+# ─── Memory API ────────────────────────────────────────────────────────────────
 
 @router.get("/memory/{agent_id}")
 def get_agent_memory(agent_id: str):
@@ -603,75 +71,7 @@ def save_reflection(body: ReflectionRequest):
     return {"status": "saved", "agent_id": body.agent_id.upper()}
 
 
-# ─── V2: Constitution API ─────────────────────────────────────────────────────
-
-@router.get("/constitution")
-def get_constitution():
-    """Return the active company constitution."""
-    return {"constitution": DEFAULT_CONSTITUTION}
-
-
-@router.get("/constitution/validate")
-def validate_with_constitution(text: str, agent_id: str = ""):
-    """Validate a text snippet against the company constitution."""
-    violations = constitution.validate({"text": text}, agent_id=agent_id)
-    return {
-        "passed": not constitution.has_blockers(violations),
-        "violations": [{"rule": v.rule, "severity": v.severity, "details": v.details, "fix": v.suggested_fix} for v in violations],
-        "summary": constitution.summarize(violations),
-    }
-
-
-# ─── V2: Approval Center ─────────────────────────────────────────────────────
-
-@router.get("/approvals")
-def get_pending_approvals(db: Session = Depends(get_db)):
-    """Return all items that require human approval (Approval Center)."""
-    items = db.query(PipelineItem).filter(
-        PipelineItem.approval_required == True,
-        PipelineItem.status.in_([PipelineStatus.PENDING, PipelineStatus.VETOED])
-    ).order_by(PipelineItem.created_at.desc()).all()
-    return [item.to_dict() for item in items]
-
-
-@router.post("/approvals/{item_id}/approve")
-def approve_item(item_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Approve a flagged item (overrides veto or manager-required flags)."""
-    item = db.query(PipelineItem).filter(PipelineItem.id == str(item_id)).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    item.status = PipelineStatus.APPROVED
-    item.approval_required = False
-    item.approved_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"status": "approved", "item": item.to_dict()}
-
-
-@router.post("/approvals/{item_id}/reject")
-def reject_item(item_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Reject a flagged item."""
-    item = db.query(PipelineItem).filter(PipelineItem.id == str(item_id)).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    item.status = PipelineStatus.REJECTED
-    item.approval_required = False
-    db.commit()
-    return {"status": "rejected", "item": item.to_dict()}
-
-
-# ─── V2: Risk Analysis ────────────────────────────────────────────────────────
-
-@router.post("/risk/analyze")
-async def analyze_risk(body: dict):
-    """Run the Risk Analysis Brain on a given campaign context."""
-    from agents.risk import risk_analyze
-    campaign_context = body.get("campaign_context", {})
-    instruction = body.get("instruction", "")
-    result = risk_analyze(campaign_context, {}, instruction)
-    return result
-
-
-# ─── V3: EvaluatorBrain ────────────────────────────────────────────────────────
+# ─── EvaluatorBrain ────────────────────────────────────────────────────────────
 
 @router.get("/evaluations")
 def get_evaluations(agent_id: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db)):
@@ -707,69 +107,14 @@ def generate_benchmarks():
     return {"generated": generated, "skipped": skipped}
 
 
-# ─── V3: MetaLearningBrain ─────────────────────────────────────────────────────
-
-@router.get("/heuristics")
-def get_heuristics():
-    """Return the currently active heuristic weight set."""
-    return {"weights": meta_learning_brain.get_active_heuristics()}
-
-
-@router.get("/heuristics/history")
-def get_heuristics_history():
-    """Return every heuristic version on record, most recent first."""
-    return meta_learning_brain.get_history()
-
-
-@router.get("/heuristics/review-context")
-def get_heuristics_review_context(db: Session = Depends(get_db)):
-    """
-    Active heuristics alongside recent CMO/EMAIL benchmarks — the real
-    operational data a human reviews before calling POST /heuristics. There's
-    no automatic correlation between weights and outcomes (no real engagement
-    tracking exists yet — see evaluation/evaluator.py), so the decision to
-    propose new weights is explicitly human-driven, informed by this context.
-    """
-    benchmarks = (
-        db.query(Benchmark)
-        .filter(Benchmark.agent_id.in_(["CMO", "EMAIL"]))
-        .order_by(Benchmark.created_at.desc())
-        .limit(20)
-        .all()
-    )
-    return {
-        "active_weights": meta_learning_brain.get_active_heuristics(),
-        "recent_cmo_email_benchmarks": [b.to_dict() for b in benchmarks],
-    }
-
-
-@router.post("/heuristics")
-def propose_heuristics(body: ProposeHeuristicsRequest):
-    """Propose a new heuristic version. Validates weight ranges; raises 400 on failure."""
-    try:
-        return meta_learning_brain.propose_update(body.weights, body.reason, body.updated_by)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/heuristics/rollback/{version}")
-def rollback_heuristics(version: int):
-    """Roll back to a prior heuristic version."""
-    try:
-        return meta_learning_brain.rollback_to_version(version)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# ─── V3: Observability (distributed tracing correlation) ──────────────────────
+# ─── Observability (distributed tracing correlation) ──────────────────────────
 
 @router.get("/observability/campaigns/{run_id}")
 def get_campaign(run_id: str, db: Session = Depends(get_db)):
     """
-    Every Evaluation + AgentRunError for one pipeline run (CompanyOS V3.1
-    Layer 4 — "cost per campaign" and "Failures"), plus a computed summary.
-    The same run_id tags this run's trace in Jaeger (core/telemetry.py),
-    so a trace and its cost/latency/error data are cross-referenceable.
+    Every Evaluation + AgentRunError for one run, plus a computed summary.
+    The same run_id tags this run's trace in Jaeger (core/telemetry.py), so a
+    trace and its cost/latency/error data are cross-referenceable.
     """
     evaluations = (
         db.query(Evaluation)
@@ -795,41 +140,15 @@ def get_campaign(run_id: str, db: Session = Depends(get_db)):
     }
 
 
-# ─── V3: Strategic Knowledge Graph ──────────────────────────────────────────────
-
-@router.get("/knowledge-graph/competitors")
-def get_competitors():
-    """
-    All known competitors accumulated from past Research brain runs (not
-    real-time market data — see knowledge_graph/graph_store.py docstring).
-    """
-    return {"competitors": knowledge_graph.get_competitors()}
-
-
-@router.get("/knowledge-graph/competitors/{name}")
-def get_competitor(name: str):
-    """One competitor plus every ResearchRun that identified it."""
-    detail = knowledge_graph.get_competitor_detail(name)
-    if not detail:
-        raise HTTPException(status_code=404, detail=f"No competitor named '{name}' on record")
-    return detail
-
-
-@router.get("/knowledge-graph/trends")
-def get_trends():
-    """All known trends accumulated from past Research brain runs."""
-    return {"trends": knowledge_graph.get_trends()}
-
-
-# ─── V3: Trusted Skill Registry ─────────────────────────────────────────────────
+# ─── Trusted Skill Registry ─────────────────────────────────────────────────────
 
 @router.get("/skills/reputation")
 def get_skill_reputations():
     """
     Every tracked skill's trust_score/avg_latency_ms/failure_rate, each tagged
-    `is_mocked` — the 4 MCP platforms in core/mcp.py are fully mocked (no real
-    OAuth/API calls), so their reputation reflects "the mock always succeeds,"
-    not real-world reliability. `ollama.embed` is the one genuinely real skill.
+    `is_mocked` — the mocked CMMS/IoT Sensor platforms in core/mcp.py reflect
+    "the mock always succeeds," not real-world reliability. `ollama.embed` is
+    the one genuinely real skill.
     """
     return {"skills": skill_registry.get_all_reputations()}
 
@@ -842,6 +161,6 @@ def get_skill_reputation(skill_name: str):
 
 @router.get("/skills/recommend")
 def recommend_skill(category: str):
-    """The registry's highest-trust pick for a capability category (e.g. social_post, crm,
-    email, embedding). Returns null if no skill in that category has any recorded executions yet."""
+    """The registry's highest-trust pick for a capability category (e.g. cmms, iot, embedding).
+    Returns null if no skill in that category has any recorded executions yet."""
     return {"category": category, "recommended_skill": skill_registry.recommend(category)}

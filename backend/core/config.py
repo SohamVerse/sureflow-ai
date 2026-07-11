@@ -23,12 +23,12 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = "sureflow_password"
 
     # ── Industrial Intelligence Agent Models (Phase 2) ─────────────────────────
-    DOC_INTELLIGENCE_MODEL: str = "gemini-1.5-pro"    # Document Intelligence — OCR + entity extraction
-    KG_AGENT_MODEL: str = "gemini-2.5-flash"          # Knowledge Graph Agent — entity resolution + graph writes
-    SEARCH_AGENT_MODEL: str = "gemini-1.5-pro"        # Industrial Copilot — hybrid search + synthesis
-    MAINTENANCE_MODEL: str = "gemini-1.5-pro"         # Maintenance Intelligence — RCA + failure prediction
-    LESSONS_LEARNED_MODEL: str = "gemini-2.5-flash"   # Lessons Learned — incident parsing + warnings
-    COMPLIANCE_MODEL: str = "gemini-2.5-flash"        # Compliance — regulation gap analysis
+    DOC_INTELLIGENCE_MODEL: str = "gemini-3.5-flash"    # Document Intelligence — OCR + entity extraction
+    KG_AGENT_MODEL: str = "gemini-3.5-flash"          # Knowledge Graph Agent — entity resolution + graph writes
+    SEARCH_AGENT_MODEL: str = "gemini-3.5-flash"        # Industrial Copilot — hybrid search + synthesis
+    MAINTENANCE_MODEL: str = "gemini-3.5-flash"         # Maintenance Intelligence — RCA + failure prediction
+    LESSONS_LEARNED_MODEL: str = "gemini-3.5-flash"   # Lessons Learned — incident parsing + warnings
+    COMPLIANCE_MODEL: str = "gemini-3.5-flash"        # Compliance — regulation gap analysis
 
     # ── ModelBroker ────────────────────────────────────────────────────────────
     # Must match a model tag actually present in `ollama list` — if it isn't
@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 @lru_cache()

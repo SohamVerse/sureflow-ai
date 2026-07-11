@@ -12,6 +12,7 @@ same principle applied elsewhere.
 """
 from __future__ import annotations
 import logging
+import os
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -26,7 +27,7 @@ from prometheus_client import make_asgi_app
 logger = logging.getLogger("companyos.telemetry")
 
 SERVICE_NAME = "companyos-backend"
-OTLP_ENDPOINT = "localhost:4317"
+OTLP_ENDPOINT = os.getenv("OTLP_ENDPOINT", "localhost:4317")
 
 _tracer: trace.Tracer | None = None
 

@@ -18,6 +18,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
+from core.json_utils import parse_llm_json
 from core.memory import MemoryStore
 from core.telemetry import get_tracer
 from evaluation.evaluator import evaluator
@@ -145,28 +146,19 @@ intelligent chunks. Return the full JSON output."""
         latency_ms = compute_latency_ms(_start, time.perf_counter())
         span.set_attribute("companyos.latency_ms", latency_ms)
 
-    try:
-        result = json.loads(response.content)
-    except json.JSONDecodeError:
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        try:
-            result = json.loads(content)
-        except Exception:
-            result = {
-                "summary": response.content[:500],
-                "doc_type": "unknown",
-                "doc_metadata": {},
-                "entities": [],
-                "relationships": [],
-                "chunks": [{"content": document_text[:1000], "chunk_type": "narrative", "equipment_tags": [], "page_or_section": "1"}],
-                "confidence_score": 20,
-                "risk_level": "high",
-                "error": "Could not parse Document Intelligence JSON output",
-            }
+    result = parse_llm_json(response.content)
+    if result is None:
+        result = {
+            "summary": response.content[:500],
+            "doc_type": "unknown",
+            "doc_metadata": {},
+            "entities": [],
+            "relationships": [],
+            "chunks": [{"content": document_text[:1000], "chunk_type": "narrative", "equipment_tags": [], "page_or_section": "1"}],
+            "confidence_score": 20,
+            "risk_level": "high",
+            "error": "Could not parse Document Intelligence JSON output",
+        }
 
     cost = estimate_cost(settings.DOC_INTELLIGENCE_MODEL, response)
     brain_output = parse_brain_output(result, "DOC_INTELLIGENCE", cost=cost)

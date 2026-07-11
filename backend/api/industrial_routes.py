@@ -70,6 +70,78 @@ class WorkOrderRequest(BaseModel):
 
 # ─── Document Upload & Ingestion ──────────────────────────────────────────────
 
+def _sync_upload_to_graph(
+    doc_result: dict, detected_type: str, run_id: str, file_name: str, graph_result: dict
+) -> int:
+    """
+    Deterministically merge the extracted Equipment entities and the Document
+    node from an upload into the Industrial Knowledge Graph.
+
+    kg_agent_process() already runs an LLM pass over the entities, but whether
+    it emits Equipment create-operations is discretionary (it only ever sees
+    node *counts* as context, never real Area IDs). This makes the write
+    deterministic so newly uploaded equipment reliably appears in the
+    Equipment / Maintenance / Compliance / Lessons-Learned dropdowns — which
+    key off graph nodes, not the vector store that Copilot searches. All
+    writes are MERGE-based, so this is safe and idempotent.
+
+    Returns the number of nodes recorded (for the graph_nodes_created count).
+    """
+    doc_metadata = doc_result.get("doc_metadata", {}) or {}
+    entities = doc_result.get("entities", []) or []
+    nodes_recorded = 0
+
+    # Resolve a real Area id from the free-text area name the LLM extracted
+    # (e.g. "Pump House A" -> "AREA-100") so new nodes join the hierarchy.
+    area_hint = next(iter(doc_metadata.get("applicable_areas") or []), "")
+    resolved_area = industrial_graph.find_area_id(area_hint) or area_hint or ""
+
+    oem_name = next(
+        (e.get("canonical") or e.get("value") for e in entities if e.get("type") == "oem"),
+        "",
+    )
+
+    # Create an Equipment node for every extracted equipment entity.
+    for entity in entities:
+        if entity.get("type") != "equipment":
+            continue
+        tag = entity.get("canonical") or entity.get("value")
+        if not tag:
+            continue
+        try:
+            industrial_graph.record_equipment(
+                equipment_tag=tag,
+                name=entity.get("value", tag),
+                area_id=resolved_area,
+                oem=oem_name,
+            )
+            nodes_recorded += 1
+        except Exception:
+            continue
+
+    # Record the Document node itself, linked to the first applicable asset.
+    try:
+        applicable_equipment = doc_metadata.get("applicable_equipment") or []
+        industrial_graph.record_document(
+            doc_id=run_id,
+            title=doc_metadata.get("title") or file_name or "Uploaded Document",
+            doc_type=detected_type,
+            equipment_tag=next(iter(applicable_equipment), ""),
+            area_id=resolved_area,
+        )
+        nodes_recorded += 1
+    except Exception as e:
+        import logging
+        logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
+
+    # Invalidate the dashboard stats cache so the new nodes show immediately.
+    industrial_graph._stats_cache = None
+    industrial_graph._stats_cache_at = 0.0
+
+    graph_result["nodes_created"] = graph_result.get("nodes_created", 0) + nodes_recorded
+    return nodes_recorded
+
+
 @router.post("/industrial/upload")
 async def upload_industrial_document(
     file: UploadFile = File(...),
@@ -145,36 +217,12 @@ async def upload_industrial_document(
             except Exception as e:
                 graph_result = {"error": str(e)}
 
-        # Record the document node directly in the Knowledge Graph
-        try:
-            doc_metadata = doc_result.get("doc_metadata", {})
-            title = doc_metadata.get("title") or file.filename or "Uploaded Document"
-            equipment_tags = doc_metadata.get("applicable_equipment", [])
-            area_ids = doc_metadata.get("applicable_areas", [])
-            
-            eq_tag = equipment_tags[0] if equipment_tags else ""
-            area_id = area_ids[0] if area_ids else ""
-            
-            industrial_graph.record_document(
-                doc_id=run_id,
-                title=title,
-                doc_type=detected_type,
-                equipment_tag=eq_tag,
-                area_id=area_id,
-            )
-            
-            # Force refresh of dashboard graph stats cache
-            industrial_graph._stats_cache = None
-            industrial_graph._stats_cache_at = 0.0
-            
-            # Increment count in graph_result metadata
-            if "nodes_created" in graph_result:
-                graph_result["nodes_created"] += 1
-            else:
-                graph_result["nodes_created"] = 1
-        except Exception as e:
-            import logging
-            logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
+        # Step 4b: deterministically sync extracted Equipment + the Document
+        # node into the graph so the dashboards (not just Copilot) see this upload.
+        await run_in_threadpool(
+            _sync_upload_to_graph, doc_result, detected_type, run_id,
+            file.filename or "uploaded_doc", graph_result,
+        )
 
         return {
             "status": "completed",
@@ -265,36 +313,12 @@ async def upload_industrial_document_stream(
                 except Exception as e:
                     graph_result = {"error": str(e)}
 
-            # Record the document node directly in the Knowledge Graph
-            try:
-                doc_metadata = doc_result.get("doc_metadata", {})
-                title = doc_metadata.get("title") or file.filename or "Uploaded Document"
-                equipment_tags = doc_metadata.get("applicable_equipment", [])
-                area_ids = doc_metadata.get("applicable_areas", [])
-                
-                eq_tag = equipment_tags[0] if equipment_tags else ""
-                area_id = area_ids[0] if area_ids else ""
-                
-                industrial_graph.record_document(
-                    doc_id=run_id,
-                    title=title,
-                    doc_type=detected_type,
-                    equipment_tag=eq_tag,
-                    area_id=area_id,
-                )
-                
-                # Force refresh of dashboard graph stats cache
-                industrial_graph._stats_cache = None
-                industrial_graph._stats_cache_at = 0.0
-                
-                # Increment count in graph_result metadata
-                if "nodes_created" in graph_result:
-                    graph_result["nodes_created"] += 1
-                else:
-                    graph_result["nodes_created"] = 1
-            except Exception as e:
-                import logging
-                logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
+            # Step 4b: deterministically sync extracted Equipment + the Document
+            # node into the graph so the dashboards (not just Copilot) see this upload.
+            await run_in_threadpool(
+                _sync_upload_to_graph, doc_result, detected_type, run_id,
+                file.filename or "uploaded_doc", graph_result,
+            )
 
             yield f"data: {json.dumps({'event': 'stage', 'stage': 'graphing', 'graph_nodes_created': graph_result.get('nodes_created', 0)})}\n\n"
 

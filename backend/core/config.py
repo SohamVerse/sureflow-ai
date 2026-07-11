@@ -23,12 +23,15 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = "sureflow_password"
 
     # ── Industrial Intelligence Agent Models (Phase 2) ─────────────────────────
-    DOC_INTELLIGENCE_MODEL: str = "gemini-3.5-flash"    # Document Intelligence — OCR + entity extraction
-    KG_AGENT_MODEL: str = "gemini-3.5-flash"          # Knowledge Graph Agent — entity resolution + graph writes
-    SEARCH_AGENT_MODEL: str = "gemini-3.5-flash"        # Industrial Copilot — hybrid search + synthesis
-    MAINTENANCE_MODEL: str = "gemini-3.5-flash"         # Maintenance Intelligence — RCA + failure prediction
-    LESSONS_LEARNED_MODEL: str = "gemini-3.5-flash"   # Lessons Learned — incident parsing + warnings
-    COMPLIANCE_MODEL: str = "gemini-3.5-flash"        # Compliance — regulation gap analysis
+    # gemini-2.5-flash is the stable GA flash model; its free-tier quota pool is
+    # separate from (and far more generous than) the preview gemini-3.5-flash,
+    # whose quota exhausts almost immediately and forces the slow Ollama fallback.
+    DOC_INTELLIGENCE_MODEL: str = "gemini-2.5-flash"    # Document Intelligence — OCR + entity extraction
+    KG_AGENT_MODEL: str = "gemini-2.5-flash"          # Knowledge Graph Agent — entity resolution + graph writes
+    SEARCH_AGENT_MODEL: str = "gemini-2.5-flash"        # Industrial Copilot — hybrid search + synthesis
+    MAINTENANCE_MODEL: str = "gemini-2.5-flash"         # Maintenance Intelligence — RCA + failure prediction
+    LESSONS_LEARNED_MODEL: str = "gemini-2.5-flash"   # Lessons Learned — incident parsing + warnings
+    COMPLIANCE_MODEL: str = "gemini-2.5-flash"        # Compliance — regulation gap analysis
 
     # ── ModelBroker ────────────────────────────────────────────────────────────
     # Must match a model tag actually present in `ollama list` — if it isn't

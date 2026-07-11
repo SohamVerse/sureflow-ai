@@ -15,10 +15,23 @@ function IconBox({ children, color = '#6366f1' }: { children: React.ReactNode; c
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: color,
+      color: '#ffffff', // Set text/icon color to white
       flexShrink: 0,
-      boxShadow: `0 0 10px ${color}33`, // Subtle glow
+      position: 'relative', // Set relative positioning for absolute child overlay
+      boxShadow: '0 0 25px rgba(0, 0, 0, 0.95), 0 12px 30px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255,255,255,0.08)', // Ambient all-around shadow + downward shadow
     }}>
+      {/* Black shadow overlay overlapping the top side of the border */}
+      <div style={{
+        position: 'absolute',
+        top: '-1px',
+        left: '-1px',
+        right: '-1px',
+        height: '14px',
+        background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.95), transparent)',
+        borderRadius: '8px 8px 0 0',
+        pointerEvents: 'none',
+        zIndex: 2,
+      }} />
       {children}
     </div>
   );
@@ -95,6 +108,65 @@ export function HeroSection() {
       paddingTop: '80px',
       paddingBottom: '0',
     }}>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(24px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes drawPath {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+        .hero-fade-in-1 {
+          opacity: 0;
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 0.1s;
+        }
+        .hero-fade-in-2 {
+          opacity: 0;
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 0.25s;
+        }
+        .hero-fade-in-card {
+          opacity: 0;
+          animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 0.4s;
+        }
+        .draw-line-top {
+          stroke-dasharray: 600;
+          stroke-dashoffset: 600;
+          animation: drawPath 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation-delay: 0.9s;
+        }
+        .draw-line-bottom {
+          stroke-dasharray: 800;
+          stroke-dashoffset: 800;
+          animation: drawPath 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation-delay: 1.5s;
+        }
+        .fade-in-icons {
+          opacity: 0;
+          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 1.0s;
+        }
+        .fade-in-logo {
+          opacity: 0;
+          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 1.1s;
+        }
+      `}} />
 
       {/* ── Purple atmospheric glow (matches reference bg) ─────────────── */}
       <div style={{
@@ -132,7 +204,7 @@ export function HeroSection() {
         zIndex: 1,
         pointerEvents: 'none',
         // Adjusted the left point from -390px to -440px to move the left diagonal line outwards
-        clipPath: 'polygon(8% 0, 90% 0, calc(45% + 425px) calc(50% - 150px), calc(50% - 280px) calc(55% - 150px))',
+        clipPath: 'polygon(10% 0, 90% 0, calc(50% + 450px) calc(50% - 150px), calc(50% - 450px) calc(50% - 150px))',
       }} />
 
       {/* Subtle border lines matching the diagonal cuts to give it that 3D room feel (optional but makes it look sharp) */}
@@ -160,13 +232,13 @@ export function HeroSection() {
       }}>
 
 
-        <div style={{
+        <div className="hero-fade-in-card" style={{
           position: 'relative',
           borderRadius: '12px', // Adjusted roundness (was 24px)
           padding: '56px 48px 40px',
           background: 'transparent',
-          border: '1px solid rgba(139, 92, 246, 0.5)', // Vibrant purple border matching reference
-          boxShadow: '0 40px 120px rgba(140, 80, 220, 0.15), inset 0 1px 0 rgba(255,255,255,0.02)',
+          border: '1px solid #3f1495', // Vibrant purple border matching reference
+          boxShadow: '0 50px 100px -20px rgba(0, 0, 0, 0.85), 0 40px 120px rgba(140, 80, 220, 0.15), inset 0 1px 0 rgba(255,255,255,0.02)', // Deep black background shadow added
           backdropFilter: 'blur(20px)',
           overflow: 'visible',
           maxHeight: '480px', // Reverted back to minHeight to prevent overflow!
@@ -177,7 +249,7 @@ export function HeroSection() {
 
 
           {/* ── Headline (serif italic, inside card) ───────────────────── */}
-          <h1 style={{
+          <h1 className="hero-fade-in-1" style={{
             fontSize: 'clamp(36px, 5.5vw, 58px)',
             fontWeight: 700,
             lineHeight: 1.15,
@@ -189,7 +261,7 @@ export function HeroSection() {
           }}>
             Noise Down,
           </h1>
-          <h1 style={{
+          <h1 className="hero-fade-in-2" style={{
             fontSize: 'clamp(36px, 5.5vw, 58px)',
             fontWeight: 700,
             lineHeight: 1.15,
@@ -236,23 +308,33 @@ export function HeroSection() {
                 </linearGradient>
               </defs>
 
-              {/* TOP ROUTING - Parallel Serpentine Curves (Wider to fit brand logo) */}
-              {/* Left Path */}
-              <path d="M 394 36 L 394 42 Q 390 52 379 52 L 300 52 Q 280 52 280 67 L 280 80 Q 280 95 260 95 L 50 95" stroke="url(#split-left)" strokeWidth="2" fill="none" />
+              {/* 1. BLACK SHADOW UNDERLAYS FIRST (renders at the bottom of the stack) */}
+              
+              {/* Top Shadows */}
+              <path className="draw-line-top" d="M 394 36 L 394 42 Q 390 52 379 52 L 300 52 Q 280 52 280 67 L 280 80 Q 280 95 260 95 L 50 95" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" transform="translate(0, 4)" style={{ filter: 'blur(3px)' }} />
+              <path className="draw-line-top" d="M 406 36 L 406 42 Q 406 52 421 52 L 500 52 Q 520 52 520 67 L 520 80 Q 520 95 540 95 L 750 95" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" transform="translate(0, 4)" style={{ filter: 'blur(3px)' }} />
 
-              {/* Right Path */}
-              <path d="M 406 36 L 406 42 Q 406 52 421 52 L 500 52 Q 520 52 520 67 L 520 80 Q 520 95 540 95 L 750 95" stroke="url(#split-right)" strokeWidth="2" fill="none" />
+              {/* Bottom Shadows */}
+              <path className="draw-line-bottom" d="M 90 113 L 90 188 Q 90 200 102 200 L 360 200 Q 372 200 372 212 L 372 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
+              <path className="draw-line-bottom" d="M 160 113 L 160 192 Q 160 204 172 204 L 368 204 Q 380 204 380 216 L 380 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
+              <path className="draw-line-bottom" d="M 230 113 L 230 196 Q 230 208 242 208 L 376 208 Q 388 208 388 220 L 388 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
+              <path className="draw-line-bottom" d="M 570 113 L 570 196 Q 570 208 558 208 L 424 208 Q 412 208 412 220 L 412 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
+              <path className="draw-line-bottom" d="M 640 113 L 640 192 Q 640 204 628 204 L 432 204 Q 420 204 420 216 L 420 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
+              <path className="draw-line-bottom" d="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
 
-              {/* BOTTOM ROUTING (bundle spacing: 372, 380, 388, 396, 404, 412, 420, 428) */}
-              {/* Left icons drop */}
-              <path d="M 90 113 L 90 200 L 372 200 L 372 340" stroke="#e81cff" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
-              <path d="M 160 113 L 160 204 L 380 204 L 380 340" stroke="#10b981" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
-              <path d="M 230 113 L 230 208 L 388 208 L 388 340" stroke="#f97316" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              {/* 2. COLORED FOREGROUND LINES (renders on top of all shadows) */}
+              
+              {/* Top Lines */}
+              <path className="draw-line-top" d="M 394 36 L 394 42 Q 390 52 379 52 L 300 52 Q 280 52 280 67 L 280 80 Q 280 95 260 95 L 50 95" stroke="url(#split-left)" strokeWidth="2" fill="none" />
+              <path className="draw-line-top" d="M 406 36 L 406 42 Q 406 52 421 52 L 500 52 Q 520 52 520 67 L 520 80 Q 520 95 540 95 L 750 95" stroke="url(#split-right)" strokeWidth="2" fill="none" />
 
-              {/* Right icons drop */}
-              <path d="M 570 113 L 570 208 L 412 208 L 412 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
-              <path d="M 640 113 L 640 204 L 420 204 L 420 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
-              <path d="M 710 113 L 710 200 L 428 200 L 428 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              {/* Bottom Lines */}
+              <path className="draw-line-bottom" d="M 90 113 L 90 188 Q 90 200 102 200 L 360 200 Q 372 200 372 212 L 372 340" stroke="#e81cff" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              <path className="draw-line-bottom" d="M 160 113 L 160 192 Q 160 204 172 204 L 368 204 Q 380 204 380 216 L 380 340" stroke="#10b981" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              <path className="draw-line-bottom" d="M 230 113 L 230 196 Q 230 208 242 208 L 376 208 Q 388 208 388 220 L 388 340" stroke="#f97316" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              <path className="draw-line-bottom" d="M 570 113 L 570 196 Q 570 208 558 208 L 424 208 Q 412 208 412 220 L 412 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              <path className="draw-line-bottom" d="M 640 113 L 640 192 Q 640 204 628 204 L 432 204 Q 420 204 420 216 L 420 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+              <path className="draw-line-bottom" d="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
             </svg>
 
             {/* Get a Demo Button */}
@@ -270,13 +352,13 @@ export function HeroSection() {
               border: 'none',
               cursor: 'pointer',
               zIndex: 10,
-              boxShadow: '0 4px 14px rgba(255,255,255,0.15)'
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(255,255,255,0.15)'
             }}>
               Get a Demo
             </button>
 
             {/* Center Brand Area (overlapping the curves perfectly) */}
-            <div style={{
+            <div className="fade-in-logo" style={{
               position: 'absolute', top: '56px', left: '400px', transform: 'translateX(-50%)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', zIndex: 1
             }}>
@@ -311,24 +393,24 @@ export function HeroSection() {
             </div>
 
             {/* Left Icons */}
-            <div style={{ position: 'absolute', top: '65px', left: '90px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '90px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#e81cff"><ProtocolIcon1 /></IconBox>
             </div>
-            <div style={{ position: 'absolute', top: '65px', left: '160px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '160px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#10b981"><ProtocolIcon2 /></IconBox>
             </div>
-            <div style={{ position: 'absolute', top: '65px', left: '230px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '230px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#f97316"><ProtocolIcon3 /></IconBox>
             </div>
 
             {/* Right Icons */}
-            <div style={{ position: 'absolute', top: '65px', left: '570px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '570px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#06b6d4"><ProtocolIcon4 /></IconBox>
             </div>
-            <div style={{ position: 'absolute', top: '65px', left: '640px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '640px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#f59e0b"><ProtocolIcon5 /></IconBox>
             </div>
-            <div style={{ position: 'absolute', top: '65px', left: '710px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '710px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#8b5cf6"><ProtocolIcon6 /></IconBox>
             </div>
           </div>

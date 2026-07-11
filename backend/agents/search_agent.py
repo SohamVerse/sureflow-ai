@@ -17,6 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
+from core.json_utils import parse_llm_json
 from core.memory import MemoryStore
 from core.telemetry import get_tracer
 from evaluation.evaluator import evaluator
@@ -213,28 +214,19 @@ for every claim. Return the full JSON output."""
         latency_ms = compute_latency_ms(_start, time.perf_counter())
         span.set_attribute("companyos.latency_ms", latency_ms)
 
-    try:
-        result = json.loads(response.content)
-    except json.JSONDecodeError:
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        try:
-            result = json.loads(content)
-        except Exception:
-            # Fallback — return the raw text as the answer
-            result = {
-                "answer": response.content[:2000],
-                "intent": "general_question",
-                "citations": [],
-                "sources_consulted": [],
-                "follow_up_questions": [],
-                "confidence_score": 25,
-                "risk_level": "medium",
-                "error": "Could not parse Search Agent JSON output",
-            }
+    result = parse_llm_json(response.content)
+    if result is None:
+        # Fallback — return the raw text as the answer
+        result = {
+            "answer": response.content[:2000],
+            "intent": "general_question",
+            "citations": [],
+            "sources_consulted": [],
+            "follow_up_questions": [],
+            "confidence_score": 25,
+            "risk_level": "medium",
+            "error": "Could not parse Search Agent JSON output",
+        }
 
     cost = estimate_cost(settings.SEARCH_AGENT_MODEL, response)
     brain_output = parse_brain_output(result, "SEARCH_AGENT", cost=cost)

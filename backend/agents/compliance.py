@@ -230,7 +230,9 @@ with regulatory requirements. Assess audit readiness. Return the full JSON outpu
                 content = content[4:]
         try:
             result = json.loads(content)
-        except Exception:
+        except Exception as parse_err:
+            import logging
+            logging.getLogger("companyos.compliance").error(f"Failed to parse Compliance Agent JSON. Error: {parse_err}. Raw content: {response.content}")
             result = {
                 "overall_compliance_status": "unknown",
                 "compliance_score": 0,
@@ -240,7 +242,7 @@ with regulatory requirements. Assess audit readiness. Return the full JSON outpu
                 "recommendations": [],
                 "confidence_score": 15,
                 "risk_level": "high",
-                "error": "Could not parse Compliance Agent JSON output",
+                "error": f"Could not parse Compliance Agent JSON output: {parse_err}. Content snippet: {str(response.content)[:200]}",
             }
 
     cost = estimate_cost(settings.COMPLIANCE_MODEL, response)

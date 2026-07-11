@@ -7,6 +7,7 @@ for workflow/activity work.
 """
 import asyncio
 import logging
+import os
 import sys
 from datetime import timedelta
 
@@ -53,7 +54,7 @@ from workflows.industrial_workflows import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("companyos.worker")
 
-TEMPORAL_ADDRESS = "localhost:7233"
+TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 TASK_QUEUE = "companyos-pipeline"
 
 

@@ -26,8 +26,7 @@ def get_db():
 
 def create_tables():
     """Create all tables defined in models."""
-    from models import pipeline, leads, vault, memory, constitution  # noqa: F401
+    from models import vault, memory  # noqa: F401
     from evaluation import models as evaluation_models  # noqa: F401
-    from meta_learning import models as meta_learning_models  # noqa: F401
     from skill_registry import models as skill_registry_models  # noqa: F401
     Base.metadata.create_all(bind=engine)

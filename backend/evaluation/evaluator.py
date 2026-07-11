@@ -22,19 +22,16 @@ from evaluation.metrics import (
 
 logger = logging.getLogger("companyos.evaluator")
 
-# The 7 live pipeline agents and the model setting each one is currently
-# configured to use (see core/config.py). Shared by workflows/activities.py
-# (benchmark scheduling) and api/routes.py (the benchmark API) — kept here
-# rather than in workflows/activities.py to avoid a circular import, since
-# that module imports api.routes.persist_pipeline_results.
+# The live industrial agents and the model setting each one is currently
+# configured to use (see core/config.py). Shared by workflows/shared_activities.py
+# (benchmark scheduling) and api/routes.py (the benchmark API).
 AGENT_MODELS = {
-    "CEO": settings.CEO_MODEL,
-    "CMO": settings.CMO_MODEL,
-    "RESEARCH": settings.RESEARCH_MODEL,
-    "SDR": settings.SDR_MODEL,
-    "AE": settings.AE_MODEL,
-    "RISK": settings.RISK_MODEL,
-    "EMAIL": settings.EMAIL_MODEL,
+    "DOC_INTELLIGENCE": settings.DOC_INTELLIGENCE_MODEL,
+    "KG_AGENT": settings.KG_AGENT_MODEL,
+    "SEARCH_AGENT": settings.SEARCH_AGENT_MODEL,
+    "MAINTENANCE": settings.MAINTENANCE_MODEL,
+    "LESSONS_LEARNED": settings.LESSONS_LEARNED_MODEL,
+    "COMPLIANCE": settings.COMPLIANCE_MODEL,
 }
 
 

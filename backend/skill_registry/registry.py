@@ -5,11 +5,10 @@ Wraps tool/skill executions with timing + success/failure logging, so
 reputation (trust_score, latency, failure_rate) is computed from real
 execution history rather than declared. Two kinds of skills are registered
 today:
-  - The 4 MCP platforms in core/mcp.py (linkedin, hubspot, instagram, gmail)
-    — fully MOCKED, can never fail. Their reputation honestly reflects "the
-    mock always succeeds instantly," not real-world reliability. Always
-    tagged `is_mocked: true` so nothing downstream mistakes this for real
-    data. Real OAuth integrations are a separate, much bigger effort.
+  - The MCP platforms in core/mcp.py (cmms, iot_sensors) — fully MOCKED, can
+    never fail. Their reputation honestly reflects "the mock always succeeds
+    instantly," not real-world reliability. Always tagged `is_mocked: true`
+    so nothing downstream mistakes this for real data.
   - `ollama.embed` (rag/embeddings.py) — a genuinely real, already-exercised
     skill (real network calls to a real local service), giving the registry
     at least one skill with authentic operational variance.
@@ -27,21 +26,20 @@ logger = logging.getLogger("companyos.skill_registry")
 
 # core/mcp.py's MCPServer is fully mocked — never a real OAuth/API call.
 MOCKED_SKILLS = {
-    "mcp.linkedin.post",
-    "mcp.linkedin.search_leads",
-    "mcp.hubspot.create_contact",
-    "mcp.hubspot.update_deal",
-    "mcp.instagram.post_reel",
-    "mcp.gmail.send_email",
+    "mcp.cmms.create_work_order",
+    "mcp.cmms.get_equipment",
+    "mcp.cmms.get_maintenance_history",
+    "mcp.iot_sensors.read_sensors",
+    "mcp.iot_sensors.get_alerts",
 }
 
 # Maps a skill to the capability category it serves, for recommend().
 SKILL_CATEGORIES = {
-    "mcp.linkedin.post": "social_post",
-    "mcp.instagram.post_reel": "social_post",
-    "mcp.hubspot.create_contact": "crm",
-    "mcp.hubspot.update_deal": "crm",
-    "mcp.gmail.send_email": "email",
+    "mcp.cmms.create_work_order": "cmms",
+    "mcp.cmms.get_equipment": "cmms",
+    "mcp.cmms.get_maintenance_history": "cmms",
+    "mcp.iot_sensors.read_sensors": "iot",
+    "mcp.iot_sensors.get_alerts": "iot",
     "ollama.embed": "embedding",
 }
 

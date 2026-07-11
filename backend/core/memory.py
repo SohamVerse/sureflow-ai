@@ -125,26 +125,6 @@ class MemoryStore:
         except Exception:
             return []
 
-    def get_voice_profile(self, query: str = "") -> str:
-        results = self.query_semantic("01-voice", query or "brand voice tone style", n_results=3)
-        return "\n".join(r["content"] for r in results) or "Professional, confident, data-driven tone."
-
-    def get_icp(self, query: str = "") -> str:
-        results = self.query_semantic("02-icp", query or "ideal customer profile", n_results=3)
-        return "\n".join(r["content"] for r in results) or "B2B SaaS decision-makers and founders."
-
-    def get_content_pillars(self, query: str = "") -> str:
-        results = self.query_semantic("04-content-pillars", query, n_results=3)
-        return "\n".join(r["content"] for r in results) or "Thought leadership, product demos, case studies."
-
-    def get_research_vault(self, query: str = "") -> str:
-        results = self.query_semantic("05-research", query, n_results=4)
-        return "\n".join(r["content"] for r in results) or "No existing research data."
-
-    def get_what_works(self, query: str = "") -> str:
-        results = self.query_semantic("06-what-works", query, n_results=2)
-        return "\n".join(r["content"] for r in results) or "No performance history available."
-
     # ── Memory Summary ─────────────────────────────────────────────────────────
 
     def get_memory_summary(self, agent_id: str) -> dict:
@@ -177,6 +157,168 @@ class MemoryStore:
             ],
         }
 
+    # ── Industrial Episodic Memory ─────────────────────────────────────────────
+
+    def save_episodic_industrial(
+        self,
+        agent_id: str,
+        task: str,
+        output: dict,
+        equipment_tag: str = "",
+        context_type: str = "maintenance",
+    ) -> None:
+        """Persist an equipment-scoped episode (e.g., maintenance run on P-101)."""
+        db = SessionLocal()
+        try:
+            db.add(EpisodicMemory(
+                agent_id=agent_id,
+                task=task,
+                output_summary=_summarize_output(output),
+                confidence=output.get("confidence", 50),
+                risk_level=output.get("risk_level", "medium"),
+                equipment_tag=equipment_tag or None,
+                context_type=context_type,
+            ))
+            db.commit()
+        finally:
+            db.close()
+
+    def get_episodic_by_equipment(self, equipment_tag: str, limit: int = 10) -> list[dict]:
+        """Return episodes related to a specific equipment tag, newest first."""
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(EpisodicMemory)
+                .filter(EpisodicMemory.equipment_tag == equipment_tag)
+                .order_by(EpisodicMemory.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        finally:
+            db.close()
+        return [
+            {
+                "agent_id": r.agent_id,
+                "task": r.task,
+                "output_summary": r.output_summary,
+                "confidence": r.confidence,
+                "risk": r.risk_level,
+                "context_type": r.context_type,
+                "timestamp": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
+
+    # ── Industrial Reflection Memory (Lessons Learned) ─────────────────────────
+
+    def save_reflection_industrial(
+        self,
+        agent_id: str,
+        task: str,
+        failure_reason: str,
+        lesson: str,
+        equipment_tag: str = "",
+        incident_id: str = "",
+        category: str = "operational_failure",
+        source: str = "incident_report",
+    ) -> None:
+        """
+        Record an operational lesson learned (not just agent failure).
+        Categories: operational_failure, safety_incident, near_miss
+        Sources: agent, incident_report, capa, operator_feedback
+        """
+        db = SessionLocal()
+        try:
+            db.add(ReflectionMemory(
+                agent_id=agent_id,
+                task_context=task[:300],
+                failure_reason=failure_reason,
+                lesson=lesson,
+                equipment_tag=equipment_tag or None,
+                incident_id=incident_id or None,
+                category=category,
+                source=source,
+            ))
+            db.commit()
+        finally:
+            db.close()
+
+    def get_lessons_by_equipment(self, equipment_tag: str, limit: int = 5) -> str:
+        """
+        Return formatted lessons learned related to a specific equipment tag.
+        Injected into agent prompts when that equipment is being discussed.
+        """
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(ReflectionMemory)
+                .filter(ReflectionMemory.equipment_tag == equipment_tag)
+                .order_by(ReflectionMemory.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        finally:
+            db.close()
+        if not rows:
+            return f"No lessons learned on record for equipment '{equipment_tag}'."
+        lines = [f"LESSONS LEARNED for {equipment_tag} — review before acting:"]
+        for r in reversed(rows):
+            lines.append(f"• [{r.created_at.date().isoformat()}] [{r.category}] Context: {r.task_context}")
+            lines.append(f"  Failure: {r.failure_reason}")
+            lines.append(f"  Lesson:  {r.lesson}")
+            if r.incident_id:
+                lines.append(f"  Linked Incident: {r.incident_id}")
+        return "\n".join(lines)
+
+    def get_all_operational_lessons(self, limit: int = 10) -> str:
+        """Return all operational lessons (not just agent failures) for CEO/Copilot context."""
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(ReflectionMemory)
+                .filter(ReflectionMemory.category != "agent_failure")
+                .order_by(ReflectionMemory.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        finally:
+            db.close()
+        if not rows:
+            return "No operational lessons learned on record yet."
+        lines = ["OPERATIONAL LESSONS LEARNED — proactive alerts:"]
+        for r in reversed(rows):
+            tag = f" [{r.equipment_tag}]" if r.equipment_tag else ""
+            lines.append(f"• [{r.category}]{tag} {r.failure_reason}")
+            lines.append(f"  Lesson: {r.lesson}")
+        return "\n".join(lines)
+
+    # ── Industrial Semantic Memory (RAG) ───────────────────────────────────────
+
+    def get_oem_manual(self, query: str = "") -> str:
+        """Query OEM manuals for equipment specs, procedures, etc."""
+        results = self.query_semantic("10-oem-manuals", query or "equipment specifications operating procedure", n_results=4)
+        return "\n".join(r["content"] for r in results) or "No OEM manual data available."
+
+    def get_compliance_regs(self, query: str = "") -> str:
+        """Query compliance regulations (OSHA, ISO, Factory Act)."""
+        results = self.query_semantic("11-compliance-regs", query or "safety regulation compliance", n_results=4)
+        return "\n".join(r["content"] for r in results) or "No compliance regulation data available."
+
+    def get_sops(self, query: str = "") -> str:
+        """Query Standard Operating Procedures."""
+        results = self.query_semantic("12-sops", query or "standard operating procedure", n_results=4)
+        return "\n".join(r["content"] for r in results) or "No SOPs available."
+
+    def get_maintenance_logs(self, query: str = "") -> str:
+        """Query historical maintenance logs."""
+        results = self.query_semantic("13-maintenance-logs", query or "maintenance work order repair", n_results=4)
+        return "\n".join(r["content"] for r in results) or "No maintenance log data available."
+
+    def get_incident_reports(self, query: str = "") -> str:
+        """Query incident and CAPA reports."""
+        results = self.query_semantic("15-incident-reports", query or "incident failure root cause", n_results=4)
+        return "\n".join(r["content"] for r in results) or "No incident report data available."
+
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -190,3 +332,4 @@ def _summarize_output(output: dict) -> str:
     if r := output.get("risk_level"):
         parts.append(f"Risk: {r}")
     return " | ".join(parts) or json.dumps(output)[:200]
+

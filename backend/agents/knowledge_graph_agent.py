@@ -18,6 +18,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
+from core.json_utils import parse_llm_json
 from core.memory import MemoryStore
 from core.telemetry import get_tracer
 from evaluation.evaluator import evaluator
@@ -152,27 +153,18 @@ the graph operations to execute. Return the full JSON output."""
         latency_ms = compute_latency_ms(_start, time.perf_counter())
         span.set_attribute("companyos.latency_ms", latency_ms)
 
-    try:
-        result = json.loads(response.content)
-    except json.JSONDecodeError:
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        try:
-            result = json.loads(content)
-        except Exception:
-            result = {
-                "entities_resolved": [],
-                "graph_operations": [],
-                "nodes_created": 0,
-                "nodes_updated": 0,
-                "edges_created": 0,
-                "confidence_score": 20,
-                "risk_level": "high",
-                "error": "Could not parse Knowledge Graph Agent JSON output",
-            }
+    result = parse_llm_json(response.content)
+    if result is None:
+        result = {
+            "entities_resolved": [],
+            "graph_operations": [],
+            "nodes_created": 0,
+            "nodes_updated": 0,
+            "edges_created": 0,
+            "confidence_score": 20,
+            "risk_level": "high",
+            "error": "Could not parse Knowledge Graph Agent JSON output",
+        }
 
     # Execute the graph operations based on LLM output
     _execute_graph_operations(result, doc_metadata)

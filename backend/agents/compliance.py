@@ -17,6 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from core.config import settings
 from core.model_broker import get_broker_llm, estimate_cost
 from core.brain import parse_brain_output
+from core.json_utils import parse_llm_json
 from core.memory import MemoryStore
 from core.telemetry import get_tracer
 from evaluation.evaluator import evaluator
@@ -220,30 +221,23 @@ with regulatory requirements. Assess audit readiness. Return the full JSON outpu
         latency_ms = compute_latency_ms(_start, time.perf_counter())
         span.set_attribute("companyos.latency_ms", latency_ms)
 
-    try:
-        result = json.loads(response.content)
-    except json.JSONDecodeError:
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        try:
-            result = json.loads(content)
-        except Exception as parse_err:
-            import logging
-            logging.getLogger("companyos.compliance").error(f"Failed to parse Compliance Agent JSON. Error: {parse_err}. Raw content: {response.content}")
-            result = {
-                "overall_compliance_status": "unknown",
-                "compliance_score": 0,
-                "gaps": [],
-                "audit_readiness": {"overall_status": "not_ready", "findings_count": {}},
-                "sop_gaps": [],
-                "recommendations": [],
-                "confidence_score": 15,
-                "risk_level": "high",
-                "error": f"Could not parse Compliance Agent JSON output: {parse_err}. Content snippet: {str(response.content)[:200]}",
-            }
+    result = parse_llm_json(response.content)
+    if result is None:
+        import logging
+        logging.getLogger("companyos.compliance").error(
+            f"Failed to parse Compliance Agent JSON even after repair. Raw content: {response.content}"
+        )
+        result = {
+            "overall_compliance_status": "unknown",
+            "compliance_score": 0,
+            "gaps": [],
+            "audit_readiness": {"overall_status": "not_ready", "findings_count": {}},
+            "sop_gaps": [],
+            "recommendations": [],
+            "confidence_score": 15,
+            "risk_level": "high",
+            "error": f"Could not parse Compliance Agent JSON output. Content snippet: {str(response.content)[:200]}",
+        }
 
     cost = estimate_cost(settings.COMPLIANCE_MODEL, response)
     brain_output = parse_brain_output(result, "COMPLIANCE", cost=cost)

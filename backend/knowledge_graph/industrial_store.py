@@ -169,6 +169,23 @@ class IndustrialGraphStore:
 
     # ── Read Methods ───────────────────────────────────────────────────────────
 
+    def find_area_id(self, name_hint: str) -> Optional[str]:
+        """
+        Best-effort resolve a free-text area name — as extracted from an
+        uploaded document, e.g. "Pump House A" rather than "AREA-100" — to an
+        existing Area's area_id, so newly ingested Equipment/Document nodes
+        link into the existing Plant hierarchy instead of ending up orphaned.
+        """
+        if not name_hint:
+            return None
+        try:
+            driver = get_driver()
+            with driver.session() as session:
+                return session.execute_read(self._read_area_id_by_name, name_hint)
+        except Exception as e:
+            logger.warning(f"Failed to resolve area by name '{name_hint}': {e}")
+            return None
+
     def get_asset_timeline(self, equipment_tag: str, limit: int = 20) -> list[dict]:
         """
         Traverse the graph to return all incidents, work orders, and inspections
@@ -527,6 +544,22 @@ class IndustrialGraphStore:
     # ── Read transaction methods ───────────────────────────────────────────────
 
     @staticmethod
+    def _read_area_id_by_name(tx, name_hint: str) -> Optional[str]:
+        result = tx.run(
+            """
+            MATCH (a:Area)
+            WHERE a.area_id = $name_hint
+               OR toLower(a.name) CONTAINS toLower($name_hint)
+               OR toLower($name_hint) CONTAINS toLower(a.name)
+            RETURN a.area_id AS area_id
+            LIMIT 1
+            """,
+            name_hint=name_hint,
+        )
+        record = result.single()
+        return record["area_id"] if record else None
+
+    @staticmethod
     def _read_asset_timeline(tx, equipment_tag: str, limit: int) -> list[dict]:
         result = tx.run(
             """
@@ -603,9 +636,13 @@ class IndustrialGraphStore:
 
     @staticmethod
     def _read_all_equipment(tx) -> list[dict]:
+        # Guard against tag-less Equipment nodes an LLM extraction may have
+        # created (kg_agent's discretionary path); they'd render as blank,
+        # unusable options in every equipment dropdown.
         result = tx.run(
             """
             MATCH (e:Equipment)
+            WHERE e.tag IS NOT NULL AND trim(e.tag) <> ''
             OPTIONAL MATCH (a:Area)-[:CONTAINS]->(e)
             OPTIONAL MATCH (e)-[:IS_TYPE]->(ac:AssetClass)
             RETURN e.tag AS tag, e.name AS name, a.name AS area,

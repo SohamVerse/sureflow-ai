@@ -145,6 +145,37 @@ async def upload_industrial_document(
             except Exception as e:
                 graph_result = {"error": str(e)}
 
+        # Record the document node directly in the Knowledge Graph
+        try:
+            doc_metadata = doc_result.get("doc_metadata", {})
+            title = doc_metadata.get("title") or file.filename or "Uploaded Document"
+            equipment_tags = doc_metadata.get("applicable_equipment", [])
+            area_ids = doc_metadata.get("applicable_areas", [])
+            
+            eq_tag = equipment_tags[0] if equipment_tags else ""
+            area_id = area_ids[0] if area_ids else ""
+            
+            industrial_graph.record_document(
+                doc_id=run_id,
+                title=title,
+                doc_type=detected_type,
+                equipment_tag=eq_tag,
+                area_id=area_id,
+            )
+            
+            # Force refresh of dashboard graph stats cache
+            industrial_graph._stats_cache = None
+            industrial_graph._stats_cache_at = 0.0
+            
+            # Increment count in graph_result metadata
+            if "nodes_created" in graph_result:
+                graph_result["nodes_created"] += 1
+            else:
+                graph_result["nodes_created"] = 1
+        except Exception as e:
+            import logging
+            logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
+
         return {
             "status": "completed",
             "run_id": run_id,
@@ -233,6 +264,38 @@ async def upload_industrial_document_stream(
                     )
                 except Exception as e:
                     graph_result = {"error": str(e)}
+
+            # Record the document node directly in the Knowledge Graph
+            try:
+                doc_metadata = doc_result.get("doc_metadata", {})
+                title = doc_metadata.get("title") or file.filename or "Uploaded Document"
+                equipment_tags = doc_metadata.get("applicable_equipment", [])
+                area_ids = doc_metadata.get("applicable_areas", [])
+                
+                eq_tag = equipment_tags[0] if equipment_tags else ""
+                area_id = area_ids[0] if area_ids else ""
+                
+                industrial_graph.record_document(
+                    doc_id=run_id,
+                    title=title,
+                    doc_type=detected_type,
+                    equipment_tag=eq_tag,
+                    area_id=area_id,
+                )
+                
+                # Force refresh of dashboard graph stats cache
+                industrial_graph._stats_cache = None
+                industrial_graph._stats_cache_at = 0.0
+                
+                # Increment count in graph_result metadata
+                if "nodes_created" in graph_result:
+                    graph_result["nodes_created"] += 1
+                else:
+                    graph_result["nodes_created"] = 1
+            except Exception as e:
+                import logging
+                logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
+
             yield f"data: {json.dumps({'event': 'stage', 'stage': 'graphing', 'graph_nodes_created': graph_result.get('nodes_created', 0)})}\n\n"
 
             complete_event = {

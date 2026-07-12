@@ -166,6 +166,30 @@ export function HeroSection() {
           animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           animation-delay: 1.1s;
         }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .hero-fade-in-card {
+            max-height: 410px !important;
+            padding-top: 40px !important;
+            padding-bottom: 24px !important;
+          }
+          .hero-integrations-container {
+            width: 800px !important;
+            left: 50% !important;
+            transform: translate(-50%, 0) scale(0.75) !important;
+            transform-origin: center top;
+            margin-bottom: -60px;
+          }
+          .hero-integrations-container svg {
+            transform: scaleY(1.3) !important;
+            transform-origin: center top;
+          }
+        }
+        @media (min-width: 1024px) {
+          .hero-integrations-container svg {
+            transform: scaleY(1.18) !important;
+            transform-origin: center top;
+          }
+        }
       `}} />
 
       {/* ── Purple atmospheric glow (matches reference bg) ─────────────── */}
@@ -282,7 +306,7 @@ export function HeroSection() {
           </h1>
 
           {/* ── Integrations row & Routing Lines ──────────────────────────── */}
-          <div style={{
+          <div className="hero-integrations-container" style={{
             width: '100%',
             maxWidth: '800px',
             margin: '0 auto',
@@ -359,7 +383,7 @@ export function HeroSection() {
 
             {/* Center Brand Area (overlapping the curves perfectly) */}
             <div className="fade-in-logo" style={{
-              position: 'absolute', top: '56px', left: '400px', transform: 'translateX(-50%)',
+              position: 'absolute', top: '76px', left: '400px', transform: 'translateX(-50%)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', zIndex: 1
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

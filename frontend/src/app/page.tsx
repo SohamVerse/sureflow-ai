@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/landing/Navbar';
 import { HeroSection } from '@/components/landing/Hero';
 import { TrustedBy } from '@/components/landing/TrustedBy';
+import { DetailSection } from '@/components/landing/DetailSection';
 
 export default function LandingPage() {
   return (
@@ -8,6 +9,7 @@ export default function LandingPage() {
       {/* <Navbar /> */}
       <HeroSection />
       <TrustedBy />
+      <DetailSection />
     </div>
   );
 }

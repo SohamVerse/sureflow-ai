@@ -205,6 +205,52 @@ export function DetailSection() {
               max-width: 480px !important;
             }
           }
+          @media (max-width: 639px) {
+            .detail-lines-svg { display: none; }
+            .detail-svg-wrapper {
+              height: auto !important;
+              padding: 48px 20px 36px !important;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .detail-text-container {
+              position: static !important;
+              transform: none !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              left: auto !important;
+              text-align: center;
+            }
+            .detail-text-top { top: auto !important; }
+            .detail-heading {
+              font-size: 28px !important;
+              text-align: center;
+            }
+            .detail-subtext {
+              font-size: 14px !important;
+              max-width: 100% !important;
+              text-align: center;
+            }
+            .detail-tabs-grid {
+              display: flex !important;
+              overflow-x: auto !important;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+            }
+            .detail-tabs-grid::-webkit-scrollbar { display: none; }
+            .detail-tab-btn { flex-shrink: 0 !important; min-width: 120px !important; }
+            .detail-content-panel {
+              padding: 0 16px !important;
+              margin-top: 32px !important;
+            }
+            .detail-content-grid {
+              grid-template-columns: 1fr !important;
+              gap: 24px !important;
+              padding: 24px 20px !important;
+            }
+            .detail-mockup { height: 220px !important; }
+          }
         `
       }} />
 
@@ -272,14 +318,14 @@ export function DetailSection() {
       </div>
 
       {/* ── TABS BAR (Aligns perfectly with the bottom of the SVG lines) ── */}
-      <div style={{
+      <div className="detail-tabs-wrapper" style={{
         width: '100%',
         maxWidth: '1200px',
         padding: '0 20px',
         zIndex: 5,
-        marginTop: '-1px', // overlaps the lines nicely
+        marginTop: '-1px',
       }}>
-        <div style={{
+        <div className="detail-tabs-grid pulse-border" style={{
           background: 'rgba(10, 14, 24, 0.85)',
           borderRadius: '12px',
           border: '1px solid rgba(255, 255, 255, 0.06)',
@@ -288,7 +334,7 @@ export function DetailSection() {
           overflow: 'hidden',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
-        }} className="pulse-border">
+        }}>
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -296,7 +342,7 @@ export function DetailSection() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="tab-btn"
+                className="tab-btn detail-tab-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -322,7 +368,7 @@ export function DetailSection() {
       </div>
 
       {/* ── DETAIL DISPLAY PANEL (Content + Interactive Mockups) ────────── */}
-      <div style={{
+      <div className="detail-content-panel" style={{
         width: '100%',
         maxWidth: '980px',
         margin: '48px auto 0',
@@ -331,7 +377,7 @@ export function DetailSection() {
         display: 'grid',
         gridTemplateColumns: '1fr',
       }}>
-        <div style={{
+        <div className={`detail-content-grid ${activeTab === 'alerts' ? 'glow-green' : ''} ${activeTab === 'integrations' ? 'glow-cyan' : ''} ${activeTab === 'playbooks' ? 'glow-orange' : ''} ${activeTab === 'response' ? 'glow-purple' : ''}`} style={{
           background: 'rgba(10, 14, 24, 0.7)',
           borderRadius: '16px',
           border: '1px solid rgba(255, 255, 255, 0.05)',
@@ -342,12 +388,7 @@ export function DetailSection() {
           gap: '48px',
           alignItems: 'center',
           boxShadow: '0 40px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.02)',
-        }} className={`
-          ${activeTab === 'alerts' ? 'glow-green' : ''}
-          ${activeTab === 'integrations' ? 'glow-cyan' : ''}
-          ${activeTab === 'playbooks' ? 'glow-orange' : ''}
-          ${activeTab === 'response' ? 'glow-purple' : ''}
-        `}>
+        }}>
           {/* Left Column: Descriptions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h3 style={{
@@ -399,7 +440,7 @@ export function DetailSection() {
           </div>
 
           {/* Right Column: Visual Mockup Showcase */}
-          <div style={{
+          <div className="detail-mockup" style={{
             position: 'relative',
             width: '100%',
             height: '280px',

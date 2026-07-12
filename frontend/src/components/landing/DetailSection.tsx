@@ -150,18 +150,44 @@ export function DetailSection() {
           .animate-line.active.delay-outer {
             animation-delay: 0.24s;
           }
+          .detail-lines-svg {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            overflow: visible;
+          }
+          .detail-text-container {
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 900px;
+          }
+          .detail-svg-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            height: 550px;
+            z-index: 1;
+          }
+          @media (max-width: 1199px) {
+            .detail-lines-svg {
+              transform: translateX(-50%) scale(0.82);
+              transform-origin: center top;
+            }
+            .detail-text-container {
+              max-width: 740px;
+            }
+            .detail-svg-wrapper {
+              height: 452px;
+            }
+          }
         `
       }} />
 
       {/* ── TOP SVG LINES: Center aligned to receive lines from TrustedBy ────────── */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: '1200px',
-        height: '550px',
-        zIndex: 1,
-      }}>
-        <svg width="1200" height="550" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible' }}>
+      <div className="detail-svg-wrapper">
+        <svg width="1200" height="550" className="detail-lines-svg">
           {/* Black shadow lines underneath for premium contrast */}
           <path d="M 572 0 L 572 20 Q 572 50 542 50 L 110 50 Q 80 50 80 80 L 80 550" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} className={`animate-line ${shouldAnimate ? 'active' : ''} delay-outer`} />
           <path d="M 580 0 L 580 24 Q 580 54 550 54 L 120 54 Q 90 54 90 84 L 90 550" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} className={`animate-line ${shouldAnimate ? 'active' : ''} delay-mid`} />
@@ -183,16 +209,14 @@ export function DetailSection() {
         </svg>
 
         {/* ── Central Text Content (framed by the lines) ──────────────── */}
-        <div style={{
+        <div className="detail-text-container" style={{
           position: 'absolute',
           top: '195px',
-          left: '150px',
-          width: '900px',
           textAlign: 'center',
           zIndex: 2,
         }}>
           <h2 style={{
-            fontSize: 'clamp(50px, 10vw, 60px)',
+            fontSize: 'clamp(36px, 7vw, 44px)',
             fontWeight: 800,
             lineHeight: 1.2,
             letterSpacing: '-0.02em',
@@ -212,14 +236,13 @@ export function DetailSection() {
           </h2>
           <p style={{
             color: 'var(--text-secondary)',
-            fontSize: '16px',
+            fontSize: '15px',
             lineHeight: 1.65,
             maxWidth: '640px',
             margin: '0 auto',
             fontWeight: 400,
           }}>
             With every element designed for the purpose of making the lives of operations pros easier,
-            SureFlow combines an intuitive, single pane of glass with profoundly effective features.With every element designed for the purpose of making the lives of operations pros easier,
             SureFlow combines an intuitive, single pane of glass with profoundly effective features.
           </p>
         </div>

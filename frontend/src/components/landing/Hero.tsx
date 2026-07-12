@@ -190,6 +190,77 @@ export function HeroSection() {
             transform-origin: center top;
           }
         }
+        .desktop-svg {
+          display: block !important;
+        }
+        .mobile-svg {
+          display: none !important;
+        }
+        @media (max-width: 767px) {
+          .desktop-svg {
+            display: none !important;
+          }
+          .mobile-svg {
+            display: block !important;
+          }
+          .hero-fade-in-card {
+            height: 340px !important;
+            max-height: 340px !important;
+            padding: 24px 12px 16px !important;
+          }
+          .hero-fade-in-2 {
+            margin-bottom: 8px !important;
+          }
+          .hero-integrations-container {
+            width: 320px !important;
+            max-width: 100% !important;
+            height: 240px !important;
+            transform: none !important;
+            margin-top: 8px !important;
+            margin-bottom: 0px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            overflow: visible !important;
+          }
+          .fade-in-logo {
+            top: 40px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+          }
+          .fade-in-icons {
+            top: auto !important;
+          }
+          .icon-1 {
+            top: 130px !important;
+            left: calc(50% - 64px) !important;
+            transform: translateX(-50%) !important;
+          }
+          .icon-2 {
+            top: 130px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+          }
+          .icon-3 {
+            top: 130px !important;
+            left: calc(50% + 64px) !important;
+            transform: translateX(-50%) !important;
+          }
+          .icon-4 {
+            top: 185px !important;
+            left: calc(50% - 64px) !important;
+            transform: translateX(-50%) !important;
+          }
+          .icon-5 {
+            top: 185px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+          }
+          .icon-6 {
+            top: 185px !important;
+            left: calc(50% + 64px) !important;
+            transform: translateX(-50%) !important;
+          }
+        }
       `}} />
 
       {/* ── Purple atmospheric glow (matches reference bg) ─────────────── */}
@@ -316,7 +387,7 @@ export function HeroSection() {
           }}>
 
             {/* SVG Routing Lines */}
-            <svg width="800" height="280" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
+            <svg className="desktop-svg" width="800" height="280" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
               <defs>
                 <linearGradient id="split-left" x1="400" y1="36" x2="250" y2="95" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#ffffff" />
@@ -359,6 +430,40 @@ export function HeroSection() {
               <path className="draw-line-bottom" d="M 570 113 L 570 196 Q 570 208 558 208 L 424 208 Q 412 208 412 220 L 412 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
               <path className="draw-line-bottom" d="M 640 113 L 640 192 Q 640 204 628 204 L 432 204 Q 420 204 420 216 L 420 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
               <path className="draw-line-bottom" d="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+            </svg>
+
+            {/* Mobile SVG Routing Lines */}
+            <svg className="mobile-svg" width="320" height="280" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible', display: 'none' }}>
+              <defs>
+                <linearGradient id="split-left-mobile" x1="160" y1="36" x2="120" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="30%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="rgba(99, 102, 241, 0)" />
+                </linearGradient>
+                <linearGradient id="split-right-mobile" x1="160" y1="36" x2="200" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="30%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="rgba(99, 102, 241, 0)" />
+                </linearGradient>
+              </defs>
+
+              {/* 1. BLACK SHADOW UNDERLAYS */}
+              <path className="draw-line-bottom" d="M 96 178 L 96 240 L 148 240 L 148 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+              <path className="draw-line-bottom" d="M 160 178 L 160 240 L 152 240 L 152 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+              <path className="draw-line-bottom" d="M 224 178 L 224 240 L 156 240 L 156 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+              
+              <path className="draw-line-bottom" d="M 96 233 L 96 248 L 164 248 L 164 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+              <path className="draw-line-bottom" d="M 160 233 L 160 252 L 168 252 L 168 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+              <path className="draw-line-bottom" d="M 224 233 L 224 248 L 172 248 L 172 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
+
+              {/* 2. COLORED FOREGROUND LINES */}
+              <path className="draw-line-bottom" d="M 96 178 L 96 240 L 148 240 L 148 340" stroke="#e81cff" strokeWidth="1.5" fill="none" />
+              <path className="draw-line-bottom" d="M 160 178 L 160 240 L 152 240 L 152 340" stroke="#10b981" strokeWidth="1.5" fill="none" />
+              <path className="draw-line-bottom" d="M 224 178 L 224 240 L 156 240 L 156 340" stroke="#f97316" strokeWidth="1.5" fill="none" />
+              
+              <path className="draw-line-bottom" d="M 96 233 L 96 248 L 164 248 L 164 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" />
+              <path className="draw-line-bottom" d="M 160 233 L 160 252 L 168 252 L 168 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
+              <path className="draw-line-bottom" d="M 224 233 L 224 248 L 172 248 L 172 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" />
             </svg>
 
             {/* Get a Demo Button */}
@@ -417,24 +522,24 @@ export function HeroSection() {
             </div>
 
             {/* Left Icons */}
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '90px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-1" style={{ position: 'absolute', top: '65px', left: '90px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#e81cff"><ProtocolIcon1 /></IconBox>
             </div>
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '160px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-2" style={{ position: 'absolute', top: '65px', left: '160px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#10b981"><ProtocolIcon2 /></IconBox>
             </div>
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '230px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-3" style={{ position: 'absolute', top: '65px', left: '230px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#f97316"><ProtocolIcon3 /></IconBox>
             </div>
 
             {/* Right Icons */}
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '570px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-4" style={{ position: 'absolute', top: '65px', left: '570px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#06b6d4"><ProtocolIcon4 /></IconBox>
             </div>
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '640px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-5" style={{ position: 'absolute', top: '65px', left: '640px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#f59e0b"><ProtocolIcon5 /></IconBox>
             </div>
-            <div className="fade-in-icons" style={{ position: 'absolute', top: '65px', left: '710px', transform: 'translateX(-50%)', zIndex: 1 }}>
+            <div className="fade-in-icons icon-6" style={{ position: 'absolute', top: '65px', left: '710px', transform: 'translateX(-50%)', zIndex: 1 }}>
               <IconBox color="#8b5cf6"><ProtocolIcon6 /></IconBox>
             </div>
           </div>

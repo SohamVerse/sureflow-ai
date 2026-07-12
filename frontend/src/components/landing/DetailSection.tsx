@@ -182,6 +182,29 @@ export function DetailSection() {
               height: 452px;
             }
           }
+          @media (max-width: 900px) {
+            .detail-lines-svg {
+              transform: translateX(-50%) scale(0.60);
+              transform-origin: center top;
+            }
+            .detail-text-container {
+              max-width: 620px;
+              width: 95%;
+            }
+            .detail-svg-wrapper {
+              height: 332px;
+            }
+            .detail-text-top {
+              top: 130px !important;
+            }
+            .detail-heading {
+              font-size: 26px !important;
+            }
+            .detail-subtext {
+              font-size: 12px !important;
+              max-width: 480px !important;
+            }
+          }
         `
       }} />
 
@@ -209,13 +232,13 @@ export function DetailSection() {
         </svg>
 
         {/* ── Central Text Content (framed by the lines) ──────────────── */}
-        <div className="detail-text-container" style={{
+        <div className="detail-text-container detail-text-top" style={{
           position: 'absolute',
           top: '195px',
           textAlign: 'center',
           zIndex: 2,
         }}>
-          <h2 style={{
+          <h2 className="detail-heading" style={{
             fontSize: 'clamp(36px, 7vw, 44px)',
             fontWeight: 800,
             lineHeight: 1.2,
@@ -234,7 +257,7 @@ export function DetailSection() {
             </span>{' '}
             Need
           </h2>
-          <p style={{
+          <p className="detail-subtext" style={{
             color: 'var(--text-secondary)',
             fontSize: '15px',
             lineHeight: 1.65,

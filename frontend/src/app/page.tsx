@@ -3,6 +3,7 @@ import { HeroSection } from '@/components/landing/Hero';
 import { TrustedBy } from '@/components/landing/TrustedBy';
 import { DetailSection } from '@/components/landing/DetailSection';
 import { ProcessSection } from '@/components/landing/ProcessSection';
+import { SecurityAutomation } from '@/components/landing/SecurityAutomation';
 
 export default function LandingPage() {
   return (
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <TrustedBy />
       <DetailSection />
       <ProcessSection />
+      <SecurityAutomation />
     </div>
   );
 }

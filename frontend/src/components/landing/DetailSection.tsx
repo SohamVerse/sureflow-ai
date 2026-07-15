@@ -150,6 +150,15 @@ export function DetailSection() {
           .animate-line.active.delay-outer {
             animation-delay: 0.24s;
           }
+          @keyframes fadeInPulse {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          .detail-pulse-group {
+            opacity: 0;
+            animation: fadeInPulse 0.5s ease-in forwards;
+            animation-delay: 3.9s;
+          }
           .detail-lines-svg {
             position: absolute;
             top: 0;
@@ -257,6 +266,15 @@ export function DetailSection() {
       {/* ── TOP SVG LINES: Center aligned to receive lines from TrustedBy ────────── */}
       <div className="detail-svg-wrapper">
         <svg width="1200" height="550" className="detail-lines-svg">
+          <defs>
+            <filter id="detail-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           {/* Black shadow lines underneath for premium contrast */}
           <path d="M 572 0 L 572 20 Q 572 50 542 50 L 110 50 Q 80 50 80 80 L 80 550" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} className={`animate-line ${shouldAnimate ? 'active' : ''} delay-outer`} />
           <path d="M 580 0 L 580 24 Q 580 54 550 54 L 120 54 Q 90 54 90 84 L 90 550" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} className={`animate-line ${shouldAnimate ? 'active' : ''} delay-mid`} />
@@ -275,6 +293,18 @@ export function DetailSection() {
           <path d="M 612 0 L 612 28 Q 612 58 642 58 L 1070 58 Q 1100 58 1100 88 L 1100 550" stroke="#06b6d4" strokeWidth="1.5" fill="none" opacity="0.7" className={`animate-line ${shouldAnimate ? 'active' : ''} delay-inner`} />
           <path d="M 620 0 L 620 24 Q 620 54 650 54 L 1080 54 Q 1110 54 1110 84 L 1110 550" stroke="#f59e0b" strokeWidth="1.5" fill="none" opacity="0.7" className={`animate-line ${shouldAnimate ? 'active' : ''} delay-mid`} />
           <path d="M 628 0 L 628 20 Q 628 50 658 50 L 1090 50 Q 1120 50 1120 80 L 1120 550" stroke="#8b5cf6" strokeWidth="1.5" fill="none" opacity="0.7" className={`animate-line ${shouldAnimate ? 'active' : ''} delay-outer`} />
+
+          {shouldAnimate && (
+            <g className="detail-pulse-group">
+              <g><animateMotion dur="4.2s" repeatCount="indefinite" path="M 572 0 L 572 20 Q 572 50 542 50 L 110 50 Q 80 50 80 80 L 80 550" begin="0s" /><circle r="4.5" fill="#e81cff" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+              <g><animateMotion dur="3.8s" repeatCount="indefinite" path="M 580 0 L 580 24 Q 580 54 550 54 L 120 54 Q 90 54 90 84 L 90 550" begin="0.8s" /><circle r="4.5" fill="#10b981" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+              <g><animateMotion dur="4.5s" repeatCount="indefinite" path="M 588 0 L 588 28 Q 588 58 558 58 L 130 58 Q 100 58 100 88 L 100 550" begin="1.4s" /><circle r="4.5" fill="#f97316" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+
+              <g><animateMotion dur="4.0s" repeatCount="indefinite" path="M 612 0 L 612 28 Q 612 58 642 58 L 1070 58 Q 1100 58 1100 88 L 1100 550" begin="0.3s" /><circle r="4.5" fill="#06b6d4" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+              <g><animateMotion dur="3.6s" repeatCount="indefinite" path="M 620 0 L 620 24 Q 620 54 650 54 L 1080 54 Q 1110 54 1110 84 L 1110 550" begin="1.1s" /><circle r="4.5" fill="#f59e0b" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+              <g><animateMotion dur="4.8s" repeatCount="indefinite" path="M 628 0 L 628 20 Q 628 50 658 50 L 1090 50 Q 1120 50 1120 80 L 1120 550" begin="0.6s" /><circle r="4.5" fill="#8b5cf6" filter="url(#detail-glow)" /><circle r="1.5" fill="#fff" /></g>
+            </g>
+          )}
         </svg>
 
         {/* ── Central Text Content (framed by the lines) ──────────────── */}

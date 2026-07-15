@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -96,6 +97,39 @@ function ProtocolIcon6() {
    HERO SECTION — matches the reference image exactly
    ──────────────────────────────────────────────────────────────────────────── */
 export function HeroSection() {
+  const words = ["Clarity", "Confidence", "Control", "Velocity"];
+  const [wordIndex, setWordIndex] = useState(0);
+  const [currentText, setCurrentText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentWord = words[wordIndex];
+    let timeoutId: NodeJS.Timeout;
+
+    if (isDeleting) {
+      if (currentText === "") {
+        setIsDeleting(false);
+        setWordIndex((prev) => (prev + 1) % words.length);
+      } else {
+        timeoutId = setTimeout(() => {
+          setCurrentText(currentText.substring(0, currentText.length - 1));
+        }, 50);
+      }
+    } else {
+      if (currentText === currentWord) {
+        timeoutId = setTimeout(() => {
+          setIsDeleting(true);
+        }, 2000);
+      } else {
+        timeoutId = setTimeout(() => {
+          setCurrentText(currentWord.substring(0, currentText.length + 1));
+        }, 100);
+      }
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [currentText, isDeleting, wordIndex, words]);
+
   return (
     <section style={{
       minHeight: '100vh',
@@ -155,6 +189,11 @@ export function HeroSection() {
           stroke-dashoffset: 800;
           animation: drawPath 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           animation-delay: 1.5s;
+        }
+        .hero-pulse-group {
+          opacity: 0;
+          animation: fadeIn 0.5s ease-in forwards;
+          animation-delay: 4.7s;
         }
         .fade-in-icons {
           opacity: 0;
@@ -354,7 +393,7 @@ export function HeroSection() {
             marginBottom: '4px',
             marginTop: 0,
           }}>
-            Noise Down,
+            Complexity Down,
           </h1>
           <h1 className="hero-fade-in-2" style={{
             fontSize: 'clamp(36px, 5.5vw, 58px)',
@@ -370,9 +409,22 @@ export function HeroSection() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
+              display: 'inline-block',
             }}>
-              Confidence
+              {currentText}
+              <span style={{ 
+                color: '#a855f7',
+                fontWeight: 300,
+                WebkitTextFillColor: '#a855f7',
+                animation: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+              }}>|</span>
             </span>
+            <style>{`
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0; }
+              }
+            `}</style>
             <span style={{ color: 'var(--text-primary)' }}> Up</span>
           </h1>
 
@@ -389,6 +441,14 @@ export function HeroSection() {
             {/* SVG Routing Lines */}
             <svg className="desktop-svg" width="800" height="280" style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
               <defs>
+                {/* Glow filter for animated dots */}
+                <filter id="hero-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
                 <linearGradient id="split-left" x1="400" y1="36" x2="250" y2="95" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#ffffff" />
                   <stop offset="30%" stopColor="#a855f7" />
@@ -430,6 +490,16 @@ export function HeroSection() {
               <path className="draw-line-bottom" d="M 570 113 L 570 196 Q 570 208 558 208 L 424 208 Q 412 208 412 220 L 412 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
               <path className="draw-line-bottom" d="M 640 113 L 640 192 Q 640 204 628 204 L 432 204 Q 420 204 420 216 L 420 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
               <path className="draw-line-bottom" d="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" strokeLinejoin="round" opacity="0.6" />
+
+              {/* Animated Light Pulses */}
+              <g className="hero-pulse-group">
+                <g><animateMotion dur="3.2s" repeatCount="indefinite" path="M 90 113 L 90 188 Q 90 200 102 200 L 360 200 Q 372 200 372 212 L 372 340" begin="0s" /><circle r="4.5" fill="#e81cff" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+                <g><animateMotion dur="2.7s" repeatCount="indefinite" path="M 160 113 L 160 192 Q 160 204 172 204 L 368 204 Q 380 204 380 216 L 380 340" begin="0.8s" /><circle r="4.5" fill="#10b981" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+                <g><animateMotion dur="3.5s" repeatCount="indefinite" path="M 230 113 L 230 196 Q 230 208 242 208 L 376 208 Q 388 208 388 220 L 388 340" begin="1.4s" /><circle r="4.5" fill="#f97316" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+                <g><animateMotion dur="2.9s" repeatCount="indefinite" path="M 570 113 L 570 196 Q 570 208 558 208 L 424 208 Q 412 208 412 220 L 412 340" begin="0.3s" /><circle r="4.5" fill="#06b6d4" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+                <g><animateMotion dur="3.4s" repeatCount="indefinite" path="M 640 113 L 640 192 Q 640 204 628 204 L 432 204 Q 420 204 420 216 L 420 340" begin="1.1s" /><circle r="4.5" fill="#f59e0b" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+                <g><animateMotion dur="3.1s" repeatCount="indefinite" path="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" begin="0.6s" /><circle r="4.5" fill="#8b5cf6" filter="url(#hero-glow)" /><circle r="1.5" fill="#fff" /></g>
+              </g>
             </svg>
 
             {/* Mobile SVG Routing Lines */}

@@ -3,11 +3,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from core.config import settings
 
+# NeonDB requires SSL. The pooler endpoint already handles server-side
+# connection pooling, so we keep the client pool small and use
+# pool_pre_ping to detect dropped idle connections.
 engine = create_engine(
     settings.DATABASE_URL,
+    connect_args={"sslmode": "require"},
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=5,
+    max_overflow=10,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

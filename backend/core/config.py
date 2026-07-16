@@ -8,8 +8,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "2.0.0"
     DEBUG: bool = True
 
-    # Database
-    DATABASE_URL: str = "postgresql://sureflow_user:sureflow_password@localhost:5432/sureflow_db"
+    # Database — NeonDB (cloud PostgreSQL)
+    DATABASE_URL: str = "postgresql://neondb_owner:npg_oVIYxzq2i0Kr@ep-delicate-star-au0vztox-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    NEON_DATABASE_URL: str | None = None  # alias kept for reference; DATABASE_URL takes precedence
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"

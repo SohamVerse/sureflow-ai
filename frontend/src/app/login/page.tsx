@@ -1,19 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth, USERS } from '@/lib/AuthContext';
+import { useAuth, DEMO_ACCOUNTS } from '@/lib/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (login(email, password)) {
+    setLoading(true);
+    const ok = await login(email, password);
+    setLoading(false);
+    if (ok) {
       window.location.href = '/industrial';
     } else {
       setError('Invalid email or password');
@@ -57,20 +60,21 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
+            disabled={loading}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors"
           >
-            Sign In
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-8 pt-8 border-t border-[#222]">
           <h3 className="text-sm font-semibold text-gray-400 mb-4">Demo Accounts:</h3>
           <div className="space-y-3">
-            {Object.entries(USERS).map(([mail, data]) => (
-              <div key={mail} className="p-3 bg-[#1a1a1a] rounded-lg text-sm cursor-pointer hover:bg-[#222] transition-colors" onClick={() => { setEmail(mail); setPassword(data.pass); }}>
-                <div className="font-medium text-white">{data.user.name}</div>
+            {DEMO_ACCOUNTS.map((acct) => (
+              <div key={acct.email} className="p-3 bg-[#1a1a1a] rounded-lg text-sm cursor-pointer hover:bg-[#222] transition-colors" onClick={() => { setEmail(acct.email); setPassword(acct.pass); }}>
+                <div className="font-medium text-white">{acct.label}</div>
                 <div className="text-gray-400 font-mono text-xs mt-1">
-                  {mail} / {data.pass}
+                  {acct.email} / {acct.pass}
                 </div>
               </div>
             ))}

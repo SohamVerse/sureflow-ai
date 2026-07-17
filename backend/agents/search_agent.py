@@ -176,18 +176,18 @@ def search_copilot_query(
     maintenance_data = memory.get_maintenance_logs(query, plant_id=effective_plant_id)
     incident_data = memory.get_incident_reports(query, plant_id=effective_plant_id)
 
-    # Lessons learned — both general and equipment-specific
-    lessons = memory.get_all_operational_lessons(limit=5)
+    # Lessons learned — both general and equipment-specific (plant-scoped)
+    lessons = memory.get_all_operational_lessons(limit=5, plant_id=effective_plant_id)
     if equipment_tags:
         for tag in equipment_tags[:2]:
-            tag_lessons = memory.get_lessons_by_equipment(tag, limit=3)
+            tag_lessons = memory.get_lessons_by_equipment(tag, limit=3, plant_id=effective_plant_id)
             lessons += "\n" + tag_lessons
 
     # Episodic context for equipment
     equipment_episodes = ""
     if equipment_tags:
         for tag in equipment_tags[:2]:
-            episodes = memory.get_episodic_by_equipment(tag, limit=3)
+            episodes = memory.get_episodic_by_equipment(tag, limit=3, plant_id=effective_plant_id)
             if episodes:
                 equipment_episodes += f"\nRecent episodes for {tag}: {json.dumps(episodes)}"
 

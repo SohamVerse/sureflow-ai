@@ -11,13 +11,15 @@ New endpoints for the Industrial Intelligence Platform:
   - Industrial MCP (mock CMMS/IoT)
 """
 import asyncio
+import csv
+import io
 import json
 import os
 import uuid
 import tempfile
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -26,8 +28,22 @@ from core.memory import MemoryStore
 from knowledge_graph.industrial_store import industrial_graph
 from rag.embeddings import ALL_COLLECTIONS, INDUSTRIAL_COLLECTIONS
 from core.mcp import mcp_client
+from api.deps import get_current_user, resolve_scope
+from models.auth import User
 
 router = APIRouter()
+
+# Uploaded source documents are retained here (ROADMAP §0/§1 — "view source"
+# behind a citation) instead of being deleted after processing. Files are
+# stored under a per-plant subdirectory so download access is isolated by plant.
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+
+
+def _persist_upload_path(run_id: str, suffix: str, plant_id: str) -> str:
+    plant_dir = plant_id or "_global"
+    d = os.path.join(UPLOAD_DIR, plant_dir)
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, f"{run_id}{suffix}")
 
 
 # ─── Pydantic Schemas ──────────────────────────────────────────────────────────
@@ -44,6 +60,7 @@ class MaintenanceRequest(BaseModel):
     equipment_tag: str
     analysis_type: str = "full"  # "rca", "prediction", "full"
     incident_context: str = ""
+    target_plant_id: Optional[str] = None  # CTO plant-switcher; ignored for plant users
 
 
 class LessonsLearnedRequest(BaseModel):
@@ -51,6 +68,7 @@ class LessonsLearnedRequest(BaseModel):
     equipment_tag: str = ""
     incident_id: str = ""
     analysis_scope: str = "single"  # "single" or "cross_asset"
+    target_plant_id: Optional[str] = None
 
 
 class ComplianceRequest(BaseModel):
@@ -58,6 +76,7 @@ class ComplianceRequest(BaseModel):
     area_id: str = ""
     equipment_tag: str = ""
     regulation_focus: str = ""
+    target_plant_id: Optional[str] = None
 
 
 class WorkOrderRequest(BaseModel):
@@ -69,16 +88,23 @@ class WorkOrderRequest(BaseModel):
     assigned_to: str = ""
     status: str = "open"
     incident_id: str = ""
+    target_plant_id: Optional[str] = None
+
+
+class WorkOrderStatusRequest(BaseModel):
+    status: str  # open | planned | in_progress | completed | cancelled
 
 
 # ─── Document Upload & Ingestion ──────────────────────────────────────────────
 
 def _sync_upload_to_graph(
-    doc_result: dict, detected_type: str, run_id: str, file_name: str, graph_result: dict
+    doc_result: dict, detected_type: str, run_id: str, file_name: str, graph_result: dict,
+    plant_id: str = "",
 ) -> int:
     """
     Deterministically merge the extracted Equipment entities and the Document
-    node from an upload into the Industrial Knowledge Graph.
+    node from an upload into the Industrial Knowledge Graph, stamped with the
+    uploader's `plant_id` so the new nodes stay isolated to that plant.
 
     kg_agent_process() already runs an LLM pass over the entities, but whether
     it emits Equipment create-operations is discretionary (it only ever sees
@@ -95,9 +121,10 @@ def _sync_upload_to_graph(
     nodes_recorded = 0
 
     # Resolve a real Area id from the free-text area name the LLM extracted
-    # (e.g. "Pump House A" -> "AREA-100") so new nodes join the hierarchy.
+    # (e.g. "Pump House A" -> "AREA-100"), scoped to the uploader's plant so a
+    # same-named area in a different plant can never be matched.
     area_hint = next(iter(doc_metadata.get("applicable_areas") or []), "")
-    resolved_area = industrial_graph.find_area_id(area_hint) or area_hint or ""
+    resolved_area = industrial_graph.find_area_id(area_hint, plant_id or None) or ""
 
     oem_name = next(
         (e.get("canonical") or e.get("value") for e in entities if e.get("type") == "oem"),
@@ -117,6 +144,7 @@ def _sync_upload_to_graph(
                 name=entity.get("value", tag),
                 area_id=resolved_area,
                 oem=oem_name,
+                plant_id=plant_id,
             )
             nodes_recorded += 1
         except Exception:
@@ -131,6 +159,7 @@ def _sync_upload_to_graph(
             doc_type=detected_type,
             equipment_tag=next(iter(applicable_equipment), ""),
             area_id=resolved_area,
+            plant_id=plant_id,
         )
         nodes_recorded += 1
     except Exception as e:
@@ -138,8 +167,7 @@ def _sync_upload_to_graph(
         logging.getLogger("companyos.upload").warning(f"Failed to record document in Neo4j: {e}")
 
     # Invalidate the dashboard stats cache so the new nodes show immediately.
-    industrial_graph._stats_cache = None
-    industrial_graph._stats_cache_at = 0.0
+    industrial_graph._stats_cache_dict = {}
 
     graph_result["nodes_created"] = graph_result.get("nodes_created", 0) + nodes_recorded
     return nodes_recorded
@@ -151,6 +179,7 @@ async def upload_industrial_document(
     doc_type: str = Form("unknown"),
     collection: str = Form(""),
     plant_id: str = Form(""),
+    user: User = Depends(get_current_user),
 ):
     """
     Upload an industrial document and trigger the ingestion pipeline.
@@ -161,17 +190,19 @@ async def upload_industrial_document(
     3. Embed into pgvector (auto-selects collection based on doc_type)
     4. KG Agent → update Neo4j graph
 
+    The document is tagged with the caller's plant so it stays isolated.
     For demo/hackathon purposes, this runs synchronously.
-    In production, this would trigger a Temporal workflow.
     """
+    # Plant users upload only to their own plant; a CTO may target one via the form.
+    plant_id = resolve_scope(user, plant_id or None) or ""
     run_id = str(uuid.uuid4())
 
-    # Save uploaded file
+    # Persist the uploaded file (retained so the source can be viewed later).
     suffix = os.path.splitext(file.filename or "doc.txt")[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
+    tmp_path = _persist_upload_path(run_id, suffix, plant_id)
+    content = await file.read()
+    with open(tmp_path, "wb") as f:
+        f.write(content)
 
     try:
         # Step 1: Extract text
@@ -225,7 +256,7 @@ async def upload_industrial_document(
         # node into the graph so the dashboards (not just Copilot) see this upload.
         await run_in_threadpool(
             _sync_upload_to_graph, doc_result, detected_type, run_id,
-            file.filename or "uploaded_doc", graph_result,
+            file.filename or "uploaded_doc", graph_result, plant_id,
         )
 
         return {
@@ -241,9 +272,11 @@ async def upload_industrial_document(
             "graph_nodes_created": graph_result.get("nodes_created", 0),
             "summary": doc_result.get("summary", ""),
             "doc_metadata": doc_result.get("doc_metadata", {}),
+            "source_available": True,
         }
-    finally:
-        os.unlink(tmp_path)
+    except Exception:
+        # Keep the retained file even if the pipeline fails partway.
+        raise
 
 
 @router.post("/industrial/upload/stream")
@@ -252,19 +285,23 @@ async def upload_industrial_document_stream(
     doc_type: str = Form("unknown"),
     collection: str = Form(""),
     plant_id: str = Form(""),
+    user: User = Depends(get_current_user),
 ):
     """
     Same ingestion pipeline as /industrial/upload, but streams a real SSE
     progress event (Phase 5) after each pipeline stage actually completes,
     instead of the frontend having to fake the timing with setTimeout.
+    The document is tagged with the caller's plant so it stays isolated.
     """
+    plant_id = resolve_scope(user, plant_id or None) or ""
     run_id = str(uuid.uuid4())
 
+    # Persist the uploaded file (retained so the source can be viewed later).
     suffix = os.path.splitext(file.filename or "doc.txt")[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
+    tmp_path = _persist_upload_path(run_id, suffix, plant_id)
+    content = await file.read()
+    with open(tmp_path, "wb") as f:
+        f.write(content)
 
     async def event_generator():
         try:
@@ -322,7 +359,7 @@ async def upload_industrial_document_stream(
             # node into the graph so the dashboards (not just Copilot) see this upload.
             await run_in_threadpool(
                 _sync_upload_to_graph, doc_result, detected_type, run_id,
-                file.filename or "uploaded_doc", graph_result,
+                file.filename or "uploaded_doc", graph_result, plant_id,
             )
 
             yield f"data: {json.dumps({'event': 'stage', 'stage': 'graphing', 'graph_nodes_created': graph_result.get('nodes_created', 0)})}\n\n"
@@ -345,20 +382,45 @@ async def upload_industrial_document_stream(
             yield f"data: {json.dumps(complete_event)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'event': 'error', 'detail': str(e)})}\n\n"
-        finally:
-            os.unlink(tmp_path)
+        # The uploaded file is intentionally retained (see UPLOAD_DIR) so it can
+        # be viewed later via /industrial/documents/{doc_id}/file.
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/industrial/documents/{doc_id}/file")
+def get_document_file(doc_id: str, user: User = Depends(get_current_user)):
+    """
+    Serve the retained source file for an uploaded document. Access is isolated
+    by plant: a plant user can only read files under their own plant directory;
+    a CTO can read any. `doc_id` is the upload's run_id.
+    """
+    import glob
+    from fastapi.responses import FileResponse
+
+    # Which plant directories may this caller read?
+    if user.role == "cto":
+        search_dirs = [os.path.join(UPLOAD_DIR, d) for d in os.listdir(UPLOAD_DIR)] if os.path.isdir(UPLOAD_DIR) else []
+    else:
+        search_dirs = [os.path.join(UPLOAD_DIR, user.plant_id or "_none")]
+
+    for d in search_dirs:
+        matches = glob.glob(os.path.join(d, f"{doc_id}.*")) + glob.glob(os.path.join(d, doc_id))
+        if matches:
+            return FileResponse(matches[0], filename=os.path.basename(matches[0]))
+    raise HTTPException(status_code=404, detail="Source document not found or not accessible")
 
 
 # ─── Industrial Copilot (Search Agent) ────────────────────────────────────────
 
 @router.post("/industrial/copilot")
-async def copilot_query(body: CopilotQueryRequest):
+async def copilot_query(body: CopilotQueryRequest, user: User = Depends(get_current_user)):
     """
     Industrial Copilot — the main conversational interface.
     Performs hybrid search (graph + vector) and synthesizes answers with citations.
+    Plant scope is derived from the authenticated user, not the request body.
     """
+    resolve_scope(user, body.target_plant_id)  # 403 if plant user targets another plant
     from agents.search_agent import search_copilot_query
     run_id = str(uuid.uuid4())
     result = await run_in_threadpool(
@@ -366,9 +428,9 @@ async def copilot_query(body: CopilotQueryRequest):
         query=body.query,
         conversation_history=body.conversation_history,
         run_id=run_id,
-        user_role=body.user_role,
-        user_plant_id=body.user_plant_id,
-        target_plant_id=body.target_plant_id,
+        user_role=user.role,
+        user_plant_id=user.plant_id,
+        target_plant_id=(body.target_plant_id if user.role == "cto" else None),
     )
     return {
         "run_id": run_id,
@@ -377,16 +439,17 @@ async def copilot_query(body: CopilotQueryRequest):
 
 
 @router.post("/industrial/copilot/stream")
-async def copilot_query_stream(body: CopilotQueryRequest):
+async def copilot_query_stream(body: CopilotQueryRequest, user: User = Depends(get_current_user)):
     """
     Same Copilot answer as /industrial/copilot, but streams stage progress
     events (Phase 5) first so the frontend can show live feedback instead of
-    a static spinner. search_copilot_query() itself is a single LLM call that
-    gathers graph + vector context internally, so the stages below describe
-    what that call is doing rather than being separately-timed sub-calls —
-    the pacing gives the presenter/user something to read while it runs.
+    a static spinner. Plant scope is derived from the authenticated user.
     """
+    resolve_scope(user, body.target_plant_id)  # 403 if plant user targets another plant
     run_id = str(uuid.uuid4())
+    effective_role = user.role
+    effective_plant = user.plant_id
+    effective_target = body.target_plant_id if user.role == "cto" else None
 
     async def event_generator():
         stages = [
@@ -406,9 +469,9 @@ async def copilot_query_stream(body: CopilotQueryRequest):
                 query=body.query,
                 conversation_history=body.conversation_history,
                 run_id=run_id,
-                user_role=body.user_role,
-                user_plant_id=body.user_plant_id,
-                target_plant_id=body.target_plant_id,
+                user_role=effective_role,
+                user_plant_id=effective_plant,
+                target_plant_id=effective_target,
             )
             yield f"data: {json.dumps({'event': 'complete', 'run_id': run_id, **result})}\n\n"
         except Exception as e:
@@ -420,12 +483,13 @@ async def copilot_query_stream(body: CopilotQueryRequest):
 # ─── Maintenance Analysis ────────────────────────────────────────────────────
 
 @router.post("/industrial/maintenance/analyze")
-async def maintenance_analysis(body: MaintenanceRequest):
+async def maintenance_analysis(body: MaintenanceRequest, user: User = Depends(get_current_user)):
     """
     Run Maintenance Intelligence Agent on specified equipment.
     Performs RCA, failure prediction, and recommends preventive actions.
     """
     from agents.maintenance import maintenance_analyze
+    scope = resolve_scope(user, body.target_plant_id)
     run_id = str(uuid.uuid4())
     result = await run_in_threadpool(
         maintenance_analyze,
@@ -433,6 +497,7 @@ async def maintenance_analysis(body: MaintenanceRequest):
         analysis_type=body.analysis_type,
         incident_context=body.incident_context,
         run_id=run_id,
+        plant_id=scope,
     )
     return {"run_id": run_id, **result}
 
@@ -440,12 +505,13 @@ async def maintenance_analysis(body: MaintenanceRequest):
 # ─── Lessons Learned ─────────────────────────────────────────────────────────
 
 @router.post("/industrial/lessons-learned")
-async def lessons_learned_analysis(body: LessonsLearnedRequest):
+async def lessons_learned_analysis(body: LessonsLearnedRequest, user: User = Depends(get_current_user)):
     """
     Run Lessons Learned Agent — extract lessons from incidents,
     generate cross-asset warnings, detect patterns.
     """
     from agents.lessons_learned import lessons_learned_analyze
+    scope = resolve_scope(user, body.target_plant_id)
     run_id = str(uuid.uuid4())
     result = await run_in_threadpool(
         lessons_learned_analyze,
@@ -454,6 +520,7 @@ async def lessons_learned_analysis(body: LessonsLearnedRequest):
         incident_id=body.incident_id,
         analysis_scope=body.analysis_scope,
         run_id=run_id,
+        plant_id=scope,
     )
     return {"run_id": run_id, **result}
 
@@ -461,11 +528,12 @@ async def lessons_learned_analysis(body: LessonsLearnedRequest):
 # ─── Compliance Audit ─────────────────────────────────────────────────────────
 
 @router.post("/industrial/compliance/audit")
-async def compliance_audit(body: ComplianceRequest):
+async def compliance_audit(body: ComplianceRequest, user: User = Depends(get_current_user)):
     """
     Run Compliance Agent — gap analysis, SOP compliance, audit readiness.
     """
     from agents.compliance import compliance_analyze
+    plant_scope = resolve_scope(user, body.target_plant_id)
     run_id = str(uuid.uuid4())
     result = await run_in_threadpool(
         compliance_analyze,
@@ -474,6 +542,7 @@ async def compliance_audit(body: ComplianceRequest):
         equipment_tag=body.equipment_tag,
         regulation_focus=body.regulation_focus,
         run_id=run_id,
+        plant_id=plant_scope,
     )
     return {"run_id": run_id, **result}
 
@@ -481,19 +550,27 @@ async def compliance_audit(body: ComplianceRequest):
 # ─── Industrial Knowledge Graph API ──────────────────────────────────────────
 
 @router.get("/industrial/graph/hierarchy")
-def get_plant_hierarchy():
-    """Return the full Plant → Area → Equipment tree."""
-    return {"hierarchy": industrial_graph.get_plant_hierarchy()}
+def get_plant_hierarchy(
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """Return the Plant → Area → Equipment tree, scoped to the caller's plant."""
+    scope = resolve_scope(user, plant)
+    return {"hierarchy": industrial_graph.get_plant_hierarchy(plant_id=scope)}
 
 
 @router.get("/industrial/graph/equipment")
-def get_all_equipment():
-    """Return all equipment nodes."""
-    return {"equipment": industrial_graph.get_all_equipment()}
+def get_all_equipment(
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """Return equipment nodes, scoped to the caller's plant."""
+    scope = resolve_scope(user, plant)
+    return {"equipment": industrial_graph.get_all_equipment(plant_id=scope)}
 
 
 @router.get("/industrial/graph/equipment/{tag}")
-def get_equipment_detail(tag: str):
+def get_equipment_detail(tag: str, user: User = Depends(get_current_user)):
     """Full details for a specific equipment tag."""
     detail = industrial_graph.get_equipment_details(tag)
     if not detail:
@@ -502,41 +579,53 @@ def get_equipment_detail(tag: str):
 
 
 @router.get("/industrial/graph/equipment/{tag}/timeline")
-def get_equipment_timeline(tag: str, limit: int = 20):
+def get_equipment_timeline(tag: str, limit: int = 20, user: User = Depends(get_current_user)):
     """Asset timeline — incidents, work orders, inspections for an equipment tag."""
     timeline = industrial_graph.get_asset_timeline(tag, limit=limit)
     return {"equipment_tag": tag, "timeline": timeline}
 
 
 @router.get("/industrial/graph/incidents")
-def get_incidents(limit: int = 50):
-    """Return recent incidents."""
-    return {"incidents": industrial_graph.get_all_incidents(limit=limit)}
+def get_incidents(
+    limit: int = 50,
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """Return recent incidents, scoped to the caller's plant."""
+    scope = resolve_scope(user, plant)
+    return {"incidents": industrial_graph.get_all_incidents(limit=limit, plant_id=scope)}
 
 
 @router.get("/industrial/graph/compliance-gaps/{area_id}")
-def get_compliance_gaps(area_id: str):
+def get_compliance_gaps(area_id: str, user: User = Depends(get_current_user)):
     """Find compliance gaps in an area — equipment with incidents but no inspections."""
     return {"area_id": area_id, "gaps": industrial_graph.get_compliance_gaps(area_id)}
 
 
 @router.get("/industrial/graph/overview")
-def get_industrial_overview():
-    """Structured node-count stats of the Industrial Knowledge Graph (matches
-    the frontend's GraphOverview type — plants/areas/equipment/etc as numbers,
-    not the prompt-context text summary used internally by agents)."""
-    return {"overview": industrial_graph.get_graph_stats()}
+def get_industrial_overview(
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """Structured node-count stats of the Industrial Knowledge Graph, scoped to
+    the caller's plant (matches the frontend's GraphOverview type)."""
+    scope = resolve_scope(user, plant)
+    return {"overview": industrial_graph.get_graph_stats(plant_id=scope)}
 
 
 # ─── Industrial KPIs ──────────────────────────────────────────────────────────
 
 @router.get("/industrial/kpis")
-def get_industrial_kpis():
+def get_industrial_kpis(
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
     """
-    High-level industrial KPIs for the dashboard.
+    High-level industrial KPIs for the dashboard, scoped to the caller's plant.
     Combines graph stats with memory stats.
     """
-    overview = industrial_graph.get_graph_stats()
+    scope = resolve_scope(user, plant)
+    overview = industrial_graph.get_graph_stats(plant_id=scope)
     memory = MemoryStore()
 
     # Count operational lessons
@@ -581,17 +670,28 @@ def get_industrial_vault_stats():
     return {"collections": collections}
 
 
-# ─── Work Order API ───────────────────────────────────────────────────────────
+# ─── Work Order API (closed-loop: recommendation → WO → track) ────────────────
+
+@router.get("/industrial/work-orders")
+def list_work_orders(
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """List work orders visible to the caller (plant-scoped)."""
+    scope = resolve_scope(user, plant)
+    return {"work_orders": industrial_graph.get_all_work_orders(plant_id=scope)}
+
 
 @router.post("/industrial/work-orders")
-async def create_work_order(body: WorkOrderRequest):
+async def create_work_order(body: WorkOrderRequest, user: User = Depends(get_current_user)):
     """
-    Create a work order — records it in the Knowledge Graph and
-    optionally triggers maintenance analysis.
+    Create a work order — records it in the Knowledge Graph, stamped with the
+    caller's plant. This is the "act" step that closes the loop from an AI
+    maintenance recommendation to a tracked action.
     """
+    scope = resolve_scope(user, body.target_plant_id)
     wo_id = body.wo_id or f"WO-{uuid.uuid4().hex[:8].upper()}"
 
-    # Record in graph
     industrial_graph.record_work_order(
         wo_id=wo_id,
         title=body.title,
@@ -601,9 +701,9 @@ async def create_work_order(body: WorkOrderRequest):
         assigned_to=body.assigned_to,
         status=body.status,
         incident_id=body.incident_id or None,
+        plant_id=scope or "",
     )
 
-    # Record in memory
     memory = MemoryStore()
     memory.save_episodic_industrial(
         "MAINTENANCE",
@@ -611,13 +711,110 @@ async def create_work_order(body: WorkOrderRequest):
         {"wo_id": wo_id, "title": body.title, "equipment_tag": body.equipment_tag},
         equipment_tag=body.equipment_tag,
         context_type="work_order",
+        plant_id=scope or "",
     )
 
-    return {
-        "status": "created",
-        "wo_id": wo_id,
-        "equipment_tag": body.equipment_tag,
-    }
+    return {"status": "created", "wo_id": wo_id, "equipment_tag": body.equipment_tag}
+
+
+@router.post("/industrial/work-orders/{wo_id}/status")
+def update_work_order_status(wo_id: str, body: WorkOrderStatusRequest, user: User = Depends(get_current_user)):
+    """Advance a work order's status (open → in_progress → completed, etc.)."""
+    ok = industrial_graph.update_work_order_status(wo_id, body.status)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Work order '{wo_id}' not found")
+    industrial_graph._stats_cache_dict = {}
+    return {"status": "updated", "wo_id": wo_id, "new_status": body.status}
+
+
+# ─── Global Search (ROADMAP §1) ──────────────────────────────────────────────
+
+@router.get("/industrial/search")
+def global_search(
+    q: str = Query(..., min_length=1),
+    plant: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
+):
+    """Keyword search across equipment, incidents, documents, and lessons — plant-scoped."""
+    scope = resolve_scope(user, plant)
+    ql = q.strip().lower()
+
+    equipment = [
+        e for e in industrial_graph.get_all_equipment(plant_id=scope)
+        if ql in f"{e.get('tag', '')} {e.get('name', '')} {e.get('area', '')}".lower()
+    ][:12]
+    incidents = [
+        i for i in industrial_graph.get_all_incidents(limit=100, plant_id=scope)
+        if ql in f"{i.get('id', '')} {i.get('title', '')} {i.get('description', '')}".lower()
+    ][:12]
+
+    from core.database import SessionLocal
+    from models.memory import ReflectionMemory
+    from models.vault import VaultDocument
+    db = SessionLocal()
+    try:
+        lq = db.query(ReflectionMemory).filter(
+            ReflectionMemory.lesson.ilike(f"%{q}%")
+            | ReflectionMemory.failure_reason.ilike(f"%{q}%")
+            | ReflectionMemory.task_context.ilike(f"%{q}%")
+        )
+        if scope:
+            lq = lq.filter(ReflectionMemory.plant_id == scope)
+        lessons = [
+            {"lesson": r.lesson, "equipment_tag": r.equipment_tag, "category": r.category}
+            for r in lq.limit(12).all()
+        ]
+
+        # Filter the plant scope in Python — portable across JSON/JSONB column types.
+        seen: dict = {}
+        for row in db.query(VaultDocument).filter(VaultDocument.content.ilike(f"%{q}%")).limit(120).all():
+            meta = row.meta_data or {}
+            if scope and meta.get("plant_id") != scope:
+                continue
+            src = meta.get("original_name") or meta.get("source") or "document"
+            seen.setdefault(src, {"source": src, "collection": row.collection, "snippet": (row.content or "")[:140]})
+        documents = list(seen.values())[:12]
+    finally:
+        db.close()
+
+    return {"query": q, "equipment": equipment, "incidents": incidents, "documents": documents, "lessons": lessons}
+
+
+# ─── CSV Export (ROADMAP §1 — dependency-free report export) ──────────────────
+
+def _csv_response(rows: list[dict], columns: list[str], filename: str) -> StreamingResponse:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    for r in rows:
+        writer.writerow(r)
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/industrial/export/equipment.csv")
+def export_equipment_csv(plant: Optional[str] = Query(None), user: User = Depends(get_current_user)):
+    scope = resolve_scope(user, plant)
+    rows = industrial_graph.get_all_equipment(plant_id=scope)
+    return _csv_response(rows, ["tag", "name", "area", "asset_class", "created_at"], "equipment.csv")
+
+
+@router.get("/industrial/export/incidents.csv")
+def export_incidents_csv(plant: Optional[str] = Query(None), user: User = Depends(get_current_user)):
+    scope = resolve_scope(user, plant)
+    rows = industrial_graph.get_all_incidents(limit=500, plant_id=scope)
+    return _csv_response(rows, ["id", "title", "severity", "date", "equipment_tag", "equipment_name"], "incidents.csv")
+
+
+@router.get("/industrial/export/work-orders.csv")
+def export_work_orders_csv(plant: Optional[str] = Query(None), user: User = Depends(get_current_user)):
+    scope = resolve_scope(user, plant)
+    rows = industrial_graph.get_all_work_orders(plant_id=scope)
+    return _csv_response(rows, ["wo_id", "title", "type", "status", "equipment_tag", "incident_id", "created_at"], "work_orders.csv")
 
 
 # ─── Industrial MCP (Mock CMMS/IoT) ──────────────────────────────────────────

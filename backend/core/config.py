@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     # Gemini
     GEMINI_API_KEY: str | None = None
 
+    # ── Auth / JWT (multi-location) ────────────────────────────────────────────
+    # Scope for every request derives from a signed JWT, never from client body
+    # fields. Override JWT_SECRET in .env for any real deployment.
+    JWT_SECRET: str = "change-me-in-production-sureflow-multi-location-secret"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24  # 24h tokens (demo convenience)
+
     # Neo4j (Industrial Knowledge Graph)
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"

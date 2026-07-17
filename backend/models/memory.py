@@ -18,6 +18,8 @@ class EpisodicMemory(Base):
     equipment_tag = Column(String(100), nullable=True, index=True)
     # "agent_run" (default), "maintenance", "inspection", "incident_rca"
     context_type = Column(String(50), nullable=True, default="agent_run")
+    # Multi-location: which plant this episode belongs to (NULL = global/legacy)
+    plant_id = Column(String(50), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 
@@ -37,5 +39,7 @@ class ReflectionMemory(Base):
     category = Column(String(50), nullable=True, default="agent_failure")
     # Where the lesson originated: "agent", "incident_report", "capa", "operator_feedback"
     source = Column(String(50), nullable=True, default="agent")
+    # Multi-location: which plant this lesson belongs to (NULL = global/legacy)
+    plant_id = Column(String(50), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 

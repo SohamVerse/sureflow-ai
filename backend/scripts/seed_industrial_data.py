@@ -46,6 +46,10 @@ def seed():
         industrial_graph.record_area(area_id, name, plant_id)
     print(f"[SEED] Created {len(areas)} Areas")
 
+    # Map area → plant so every downstream entity inherits the correct plant_id
+    # (equipment via its area; incidents/WOs/inspections via their equipment).
+    area_to_plant = {area_id: plant_id for area_id, _, plant_id in areas}
+
     # ── 3. Equipment ─────────────────────────────────────────────────────────
     equipment = [
         # Pump House A
@@ -66,8 +70,11 @@ def seed():
         ("GEN-501", "Diesel Generator", "AREA-500", "Generator", "Cummins"),
         ("TR-502", "Power Transformer", "AREA-500", "Transformer", "ABB"),
     ]
+    equip_to_plant = {}
     for tag, name, area, asset_class, oem in equipment:
-        industrial_graph.record_equipment(tag, name, area, asset_class, oem)
+        pid = area_to_plant.get(area, "")
+        equip_to_plant[tag] = pid
+        industrial_graph.record_equipment(tag, name, area, asset_class, oem, plant_id=pid)
     print(f"[SEED] Created {len(equipment)} Equipment")
 
     # ── 4. Incidents ─────────────────────────────────────────────────────────
@@ -80,7 +87,7 @@ def seed():
         ("INC-006", "Compressor surge event C-401", "Reciprocating compressor experienced surge during load change. Anti-surge valve responded but with 3s delay.", "C-401", "critical", "Shift Lead Gupta", "2026-06-20"),
     ]
     for inc_id, title, desc, tag, severity, reporter, date in incidents:
-        industrial_graph.record_incident(inc_id, title, desc, tag, severity, reporter, date)
+        industrial_graph.record_incident(inc_id, title, desc, tag, severity, reporter, date, plant_id=equip_to_plant.get(tag, ""))
     print(f"[SEED] Created {len(incidents)} Incidents")
 
     # ── 5. Work Orders ───────────────────────────────────────────────────────
@@ -95,7 +102,7 @@ def seed():
         ("WO-1008", "PM on GEN-501 — 500hr service", "Oil change, filter replacement, load bank test.", "GEN-501", "preventive", "Electrical Team", "completed", None),
     ]
     for wo_id, title, desc, tag, wo_type, assigned, status, inc_id in work_orders:
-        industrial_graph.record_work_order(wo_id, title, desc, tag, wo_type, assigned, status, inc_id)
+        industrial_graph.record_work_order(wo_id, title, desc, tag, wo_type, assigned, status, inc_id, plant_id=equip_to_plant.get(tag, ""))
     print(f"[SEED] Created {len(work_orders)} Work Orders")
 
     # ── 6. Inspections ───────────────────────────────────────────────────────
@@ -107,7 +114,7 @@ def seed():
         ("INSP-005", "Compressor performance test C-401", "C-401", "Inspector Nair", "pass", "2026-05-01"),
     ]
     for insp_id, title, tag, inspector, result, date in inspections:
-        industrial_graph.record_inspection(insp_id, title, tag, inspector, result, date)
+        industrial_graph.record_inspection(insp_id, title, tag, inspector, result, date, plant_id=equip_to_plant.get(tag, ""))
     print(f"[SEED] Created {len(inspections)} Inspections")
 
     # ── 7. Documents ─────────────────────────────────────────────────────────
@@ -119,7 +126,8 @@ def seed():
         ("DOC-005", "ISO 55001 Asset Management", "compliance_regulation", "", ""),
     ]
     for doc_id, title, doc_type, eq_tag, area_id in documents:
-        industrial_graph.record_document(doc_id, title, doc_type, eq_tag, area_id)
+        doc_plant = equip_to_plant.get(eq_tag) or area_to_plant.get(area_id) or ""
+        industrial_graph.record_document(doc_id, title, doc_type, eq_tag, area_id, plant_id=doc_plant)
     print(f"[SEED] Created {len(documents)} Documents")
 
     # ── 8. Operational Lessons (Reflection Memory) ───────────────────────────
@@ -168,6 +176,8 @@ def seed():
             ),
         ]
         for lesson in lessons:
+            # Inherit the plant from the lesson's equipment (falls back to PLANT-001)
+            lesson.plant_id = equip_to_plant.get(lesson.equipment_tag) or "PLANT-001"
             db.add(lesson)
         db.commit()
         print(f"[SEED] Created {len(lessons)} Operational Lessons")

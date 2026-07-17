@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { systemApi } from '@/lib/api';
 import { EquipmentCard } from '@/components/industrial/EquipmentCard';
-import { Search, LayoutGrid, List, Cpu, Filter } from 'lucide-react';
+import { Search, LayoutGrid, List, Cpu, Filter, Download } from 'lucide-react';
 
 export default function EquipmentDashboard() {
   const { industrialEquipment, loadingIndustrial, fetchIndustrialEquipment } = useSureflowStore();
@@ -125,6 +126,11 @@ export default function EquipmentDashboard() {
             <List size={16} />
           </button>
         </div>
+
+        {/* Export */}
+        <button onClick={() => systemApi.exportCsv('equipment')} className="btn-ghost" style={{ padding: '9px 14px' }}>
+          <Download size={15} /> CSV
+        </button>
       </div>
 
       {/* Stats bar */}

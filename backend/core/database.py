@@ -29,8 +29,29 @@ def get_db():
 
 
 def create_tables():
-    """Create all tables defined in models."""
-    from models import vault, memory  # noqa: F401
+    """Create all tables defined in models, then apply light additive migrations."""
+    from models import vault, memory, auth, alert, kpi_snapshot  # noqa: F401
     from evaluation import models as evaluation_models  # noqa: F401
     from skill_registry import models as skill_registry_models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    _run_light_migrations()
+
+
+def _run_light_migrations():
+    """
+    Idempotent ADD COLUMN migrations for columns introduced after a table was
+    first created (create_all never ALTERs existing tables). Postgres supports
+    IF NOT EXISTS, so this is safe to run on every startup.
+    """
+    from sqlalchemy import text
+    statements = [
+        "ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS plant_id VARCHAR(50)",
+        "ALTER TABLE reflection_memories ADD COLUMN IF NOT EXISTS plant_id VARCHAR(50)",
+    ]
+    try:
+        with engine.begin() as conn:
+            for stmt in statements:
+                conn.execute(text(stmt))
+    except Exception as e:
+        import logging
+        logging.getLogger("companyos.database").warning(f"Light migration skipped: {e}")

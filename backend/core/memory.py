@@ -166,6 +166,7 @@ class MemoryStore:
         output: dict,
         equipment_tag: str = "",
         context_type: str = "maintenance",
+        plant_id: str = "",
     ) -> None:
         """Persist an equipment-scoped episode (e.g., maintenance run on P-101)."""
         db = SessionLocal()
@@ -178,22 +179,20 @@ class MemoryStore:
                 risk_level=output.get("risk_level", "medium"),
                 equipment_tag=equipment_tag or None,
                 context_type=context_type,
+                plant_id=plant_id or None,
             ))
             db.commit()
         finally:
             db.close()
 
-    def get_episodic_by_equipment(self, equipment_tag: str, limit: int = 10) -> list[dict]:
+    def get_episodic_by_equipment(self, equipment_tag: str, limit: int = 10, plant_id: Optional[str] = None) -> list[dict]:
         """Return episodes related to a specific equipment tag, newest first."""
         db = SessionLocal()
         try:
-            rows = (
-                db.query(EpisodicMemory)
-                .filter(EpisodicMemory.equipment_tag == equipment_tag)
-                .order_by(EpisodicMemory.created_at.desc())
-                .limit(limit)
-                .all()
-            )
+            q = db.query(EpisodicMemory).filter(EpisodicMemory.equipment_tag == equipment_tag)
+            if plant_id:
+                q = q.filter(EpisodicMemory.plant_id == plant_id)
+            rows = q.order_by(EpisodicMemory.created_at.desc()).limit(limit).all()
         finally:
             db.close()
         return [
@@ -221,6 +220,7 @@ class MemoryStore:
         incident_id: str = "",
         category: str = "operational_failure",
         source: str = "incident_report",
+        plant_id: str = "",
     ) -> None:
         """
         Record an operational lesson learned (not just agent failure).
@@ -238,25 +238,23 @@ class MemoryStore:
                 incident_id=incident_id or None,
                 category=category,
                 source=source,
+                plant_id=plant_id or None,
             ))
             db.commit()
         finally:
             db.close()
 
-    def get_lessons_by_equipment(self, equipment_tag: str, limit: int = 5) -> str:
+    def get_lessons_by_equipment(self, equipment_tag: str, limit: int = 5, plant_id: Optional[str] = None) -> str:
         """
         Return formatted lessons learned related to a specific equipment tag.
         Injected into agent prompts when that equipment is being discussed.
         """
         db = SessionLocal()
         try:
-            rows = (
-                db.query(ReflectionMemory)
-                .filter(ReflectionMemory.equipment_tag == equipment_tag)
-                .order_by(ReflectionMemory.created_at.desc())
-                .limit(limit)
-                .all()
-            )
+            q = db.query(ReflectionMemory).filter(ReflectionMemory.equipment_tag == equipment_tag)
+            if plant_id:
+                q = q.filter(ReflectionMemory.plant_id == plant_id)
+            rows = q.order_by(ReflectionMemory.created_at.desc()).limit(limit).all()
         finally:
             db.close()
         if not rows:
@@ -270,17 +268,14 @@ class MemoryStore:
                 lines.append(f"  Linked Incident: {r.incident_id}")
         return "\n".join(lines)
 
-    def get_all_operational_lessons(self, limit: int = 10) -> str:
+    def get_all_operational_lessons(self, limit: int = 10, plant_id: Optional[str] = None) -> str:
         """Return all operational lessons (not just agent failures) for CEO/Copilot context."""
         db = SessionLocal()
         try:
-            rows = (
-                db.query(ReflectionMemory)
-                .filter(ReflectionMemory.category != "agent_failure")
-                .order_by(ReflectionMemory.created_at.desc())
-                .limit(limit)
-                .all()
-            )
+            q = db.query(ReflectionMemory).filter(ReflectionMemory.category != "agent_failure")
+            if plant_id:
+                q = q.filter(ReflectionMemory.plant_id == plant_id)
+            rows = q.order_by(ReflectionMemory.created_at.desc()).limit(limit).all()
         finally:
             db.close()
         if not rows:

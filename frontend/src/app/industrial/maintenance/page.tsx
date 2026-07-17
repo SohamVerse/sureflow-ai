@@ -1,12 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useSureflowStore } from '@/lib/store';
 import { industrialApi } from '@/lib/api';
 import type { MaintenanceResult } from '@/types';
 import { AgentReasoningPanel } from '@/components/industrial/AgentReasoningPanel';
 import {
   Wrench, AlertTriangle, Activity, Cpu, Loader2,
-  ChevronDown, Play,
+  ChevronDown, Play, ClipboardList,
 } from 'lucide-react';
 
 export default function MaintenanceDashboard() {
@@ -17,10 +18,29 @@ export default function MaintenanceDashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<MaintenanceResult | null>(null);
   const [error, setError] = useState('');
+  const [creatingWO, setCreatingWO] = useState<number | null>(null);
 
   useEffect(() => {
     fetchIndustrialEquipment();
   }, [fetchIndustrialEquipment]);
+
+  // Closed-loop: turn an AI recommendation into a tracked work order.
+  const createWorkOrder = async (rec: { action: string; justification?: string; priority?: string; equipment_tag?: string }, i: number) => {
+    setCreatingWO(i);
+    try {
+      const res = await industrialApi.createWorkOrder({
+        title: rec.action,
+        description: rec.justification || '',
+        equipment_tag: rec.equipment_tag || selectedTag,
+        type: (rec.priority === 'critical' || rec.priority === 'high') ? 'corrective' : 'preventive',
+        status: 'open',
+      });
+      toast.success(`Work order ${res.wo_id} created`);
+    } catch {
+      toast.error('Failed to create work order');
+    }
+    setCreatingWO(null);
+  };
 
   const runAnalysis = async () => {
     if (!selectedTag) return;
@@ -270,9 +290,9 @@ export default function MaintenanceDashboard() {
                 </div>
                 <div className="space-y-3">
                   {result.recommendations.map((rec, i) => (
-                    <div key={i} className="flex gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <div key={i} className="flex gap-3 text-sm items-start" style={{ color: 'var(--text-secondary)' }}>
                       <span style={{ color: '#22c55e' }}>✓</span>
-                      <div>
+                      <div className="flex-1">
                         <div>
                           {rec.action}
                           {rec.priority && (
@@ -292,6 +312,16 @@ export default function MaintenanceDashboard() {
                           </div>
                         )}
                       </div>
+                      <button
+                        onClick={() => createWorkOrder(rec, i)}
+                        disabled={creatingWO === i}
+                        className="btn-ghost flex-shrink-0"
+                        style={{ padding: '5px 10px', fontSize: '11px' }}
+                        title="Create a tracked work order from this recommendation"
+                      >
+                        {creatingWO === i ? <Loader2 size={12} className="animate-spin" /> : <ClipboardList size={12} />}
+                        Work Order
+                      </button>
                     </div>
                   ))}
                 </div>

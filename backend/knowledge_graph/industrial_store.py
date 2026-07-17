@@ -68,15 +68,18 @@ class IndustrialGraphStore:
         area_id: str,
         asset_class: str = "",
         oem: str = "",
+        plant_id: str = "",
     ) -> None:
-        """Create an Equipment node linked to an Area (and optionally AssetClass/OEM)."""
+        """Create an Equipment node linked to an Area (and optionally AssetClass/OEM).
+        `plant_id` is denormalized onto the node so reads can filter by plant
+        cheaply and orphaned (area-less) equipment still stays plant-isolated."""
         try:
             driver = get_driver()
             with driver.session() as session:
                 session.execute_write(
-                    self._merge_equipment, equipment_tag, name, area_id, asset_class, oem
+                    self._merge_equipment, equipment_tag, name, area_id, asset_class, oem, plant_id or None
                 )
-            logger.info("Recorded equipment: %s in area %s", equipment_tag, area_id)
+            logger.info("Recorded equipment: %s in area %s (plant %s)", equipment_tag, area_id, plant_id or "?")
         except Exception as e:
             logger.warning(f"Failed to record equipment to Neo4j: {e}")
 
@@ -89,6 +92,7 @@ class IndustrialGraphStore:
         severity: str = "medium",
         reported_by: str = "",
         date: str = "",
+        plant_id: str = "",
     ) -> None:
         """Create an Incident node linked to the involved Equipment."""
         try:
@@ -97,7 +101,7 @@ class IndustrialGraphStore:
                 session.execute_write(
                     self._merge_incident,
                     incident_id, title, description, equipment_tag,
-                    severity, reported_by, date,
+                    severity, reported_by, date, plant_id or None,
                 )
             logger.info("Recorded incident: %s on %s", incident_id, equipment_tag)
         except Exception as e:
@@ -113,6 +117,7 @@ class IndustrialGraphStore:
         assigned_to: str = "",
         status: str = "open",
         incident_id: Optional[str] = None,
+        plant_id: str = "",
     ) -> None:
         """Create a WorkOrder node linked to Equipment (and optionally resolving an Incident)."""
         try:
@@ -121,7 +126,7 @@ class IndustrialGraphStore:
                 session.execute_write(
                     self._merge_work_order,
                     wo_id, title, description, equipment_tag,
-                    wo_type, assigned_to, status, incident_id,
+                    wo_type, assigned_to, status, incident_id, plant_id or None,
                 )
             logger.info("Recorded work order: %s on %s", wo_id, equipment_tag)
         except Exception as e:
@@ -134,13 +139,14 @@ class IndustrialGraphStore:
         doc_type: str,
         equipment_tag: str = "",
         area_id: str = "",
+        plant_id: str = "",
     ) -> None:
         """Create a Document node and optionally link to Equipment or Area."""
         try:
             driver = get_driver()
             with driver.session() as session:
                 session.execute_write(
-                    self._merge_document, doc_id, title, doc_type, equipment_tag, area_id
+                    self._merge_document, doc_id, title, doc_type, equipment_tag, area_id, plant_id or None
                 )
             logger.info("Recorded document: %s (%s)", title, doc_type)
         except Exception as e:
@@ -154,6 +160,7 @@ class IndustrialGraphStore:
         inspector: str = "",
         result: str = "pass",
         date: str = "",
+        plant_id: str = "",
     ) -> None:
         """Create an Inspection node linked to Equipment."""
         try:
@@ -161,7 +168,7 @@ class IndustrialGraphStore:
             with driver.session() as session:
                 session.execute_write(
                     self._merge_inspection,
-                    inspection_id, title, equipment_tag, inspector, result, date,
+                    inspection_id, title, equipment_tag, inspector, result, date, plant_id or None,
                 )
             logger.info("Recorded inspection: %s on %s", inspection_id, equipment_tag)
         except Exception as e:
@@ -169,19 +176,22 @@ class IndustrialGraphStore:
 
     # ── Read Methods ───────────────────────────────────────────────────────────
 
-    def find_area_id(self, name_hint: str) -> Optional[str]:
+    def find_area_id(self, name_hint: str, plant_id: Optional[str] = None) -> Optional[str]:
         """
         Best-effort resolve a free-text area name — as extracted from an
         uploaded document, e.g. "Pump House A" rather than "AREA-100" — to an
         existing Area's area_id, so newly ingested Equipment/Document nodes
         link into the existing Plant hierarchy instead of ending up orphaned.
+
+        The search is scoped to `plant_id` when provided, so an upload for one
+        plant can never resolve to a same-named area in a different plant.
         """
         if not name_hint:
             return None
         try:
             driver = get_driver()
             with driver.session() as session:
-                return session.execute_read(self._read_area_id_by_name, name_hint)
+                return session.execute_read(self._read_area_id_by_name, name_hint, plant_id)
         except Exception as e:
             logger.warning(f"Failed to resolve area by name '{name_hint}': {e}")
             return None
@@ -283,6 +293,46 @@ class IndustrialGraphStore:
             logger.warning(f"Failed to read compliance gaps from Neo4j: {e}")
             return []
 
+    def get_all_work_orders(self, plant_id: Optional[str] = None) -> list[dict]:
+        """Return all work orders (plant-scoped) with their linked equipment."""
+        try:
+            driver = get_driver()
+            with driver.session() as session:
+                return session.execute_read(self._read_all_work_orders, plant_id)
+        except Exception as e:
+            logger.warning(f"Failed to list work orders from Neo4j: {e}")
+            return []
+
+    def update_work_order_status(self, wo_id: str, status: str) -> bool:
+        """Update a work order's status. Returns True if the WO existed."""
+        try:
+            driver = get_driver()
+            with driver.session() as session:
+                return session.execute_write(self._write_wo_status, wo_id, status)
+        except Exception as e:
+            logger.warning(f"Failed to update work order status: {e}")
+            return False
+
+    def get_unresolved_severe_incidents(self, plant_id: Optional[str] = None) -> list[dict]:
+        """Critical/high incidents with no WorkOrder resolving them — alert signals."""
+        try:
+            driver = get_driver()
+            with driver.session() as session:
+                return session.execute_read(self._read_unresolved_severe_incidents, plant_id)
+        except Exception as e:
+            logger.warning(f"Failed to read unresolved severe incidents: {e}")
+            return []
+
+    def get_failed_inspections(self, plant_id: Optional[str] = None) -> list[dict]:
+        """Inspections whose result is 'fail' — alert signals."""
+        try:
+            driver = get_driver()
+            with driver.session() as session:
+                return session.execute_read(self._read_failed_inspections, plant_id)
+        except Exception as e:
+            logger.warning(f"Failed to read failed inspections: {e}")
+            return []
+
     # ── Prompt Context (for agent injection) ───────────────────────────────────
 
     def get_equipment_context(self, equipment_tag: str) -> str:
@@ -374,8 +424,8 @@ class IndustrialGraphStore:
         tx.run(
             """
             MERGE (a:Area {area_id: $area_id})
-            ON CREATE SET a.name = $name, a.created_at = datetime()
-            ON MATCH SET a.name = $name, a.updated_at = datetime()
+            ON CREATE SET a.name = $name, a.plant_id = $plant_id, a.created_at = datetime()
+            ON MATCH SET a.name = $name, a.plant_id = COALESCE($plant_id, a.plant_id), a.updated_at = datetime()
             WITH a
             MATCH (p:Plant {plant_id: $plant_id})
             MERGE (p)-[:CONTAINS]->(a)
@@ -384,17 +434,19 @@ class IndustrialGraphStore:
         )
 
     @staticmethod
-    def _merge_equipment(tx, equipment_tag: str, name: str, area_id: str, asset_class: str, oem: str):
+    def _merge_equipment(tx, equipment_tag: str, name: str, area_id: str, asset_class: str, oem: str, plant_id: Optional[str] = None):
         tx.run(
             """
             MERGE (e:Equipment {tag: $tag})
-            ON CREATE SET e.name = $name, e.created_at = datetime()
-            ON MATCH SET e.name = $name, e.updated_at = datetime()
+            ON CREATE SET e.name = $name, e.plant_id = $plant_id, e.created_at = datetime()
+            ON MATCH SET e.name = $name, e.plant_id = COALESCE($plant_id, e.plant_id), e.updated_at = datetime()
             WITH e
-            MATCH (a:Area {area_id: $area_id})
-            MERGE (a)-[:CONTAINS]->(e)
+            OPTIONAL MATCH (a:Area {area_id: $area_id})
+            FOREACH (_ IN CASE WHEN a IS NULL OR $area_id IS NULL OR trim($area_id) = '' THEN [] ELSE [1] END |
+                MERGE (a)-[:CONTAINS]->(e)
+            )
             """,
-            tag=equipment_tag, name=name, area_id=area_id,
+            tag=equipment_tag, name=name, area_id=area_id, plant_id=plant_id,
         )
         if asset_class:
             tx.run(
@@ -421,20 +473,25 @@ class IndustrialGraphStore:
     def _merge_incident(
         tx, incident_id: str, title: str, description: str,
         equipment_tag: str, severity: str, reported_by: str, date: str,
+        plant_id: Optional[str] = None,
     ):
         tx.run(
             """
             MERGE (i:Incident {incident_id: $incident_id})
             ON CREATE SET i.title = $title, i.description = $description,
-                          i.severity = $severity, i.date = $date, i.created_at = datetime()
+                          i.severity = $severity, i.date = $date,
+                          i.plant_id = $plant_id, i.created_at = datetime()
             ON MATCH SET  i.title = $title, i.description = $description,
-                          i.severity = $severity, i.updated_at = datetime()
+                          i.severity = $severity,
+                          i.plant_id = COALESCE($plant_id, i.plant_id), i.updated_at = datetime()
             WITH i
-            MATCH (e:Equipment {tag: $tag})
-            MERGE (i)-[:INVOLVED]->(e)
+            OPTIONAL MATCH (e:Equipment {tag: $tag})
+            FOREACH (_ IN CASE WHEN e IS NULL THEN [] ELSE [1] END |
+                MERGE (i)-[:INVOLVED]->(e)
+            )
             """,
             incident_id=incident_id, title=title, description=description,
-            severity=severity, tag=equipment_tag, date=date,
+            severity=severity, tag=equipment_tag, date=date, plant_id=plant_id,
         )
         if reported_by:
             tx.run(
@@ -451,20 +508,25 @@ class IndustrialGraphStore:
     def _merge_work_order(
         tx, wo_id: str, title: str, description: str, equipment_tag: str,
         wo_type: str, assigned_to: str, status: str, incident_id: Optional[str],
+        plant_id: Optional[str] = None,
     ):
         tx.run(
             """
             MERGE (wo:WorkOrder {wo_id: $wo_id})
             ON CREATE SET wo.title = $title, wo.description = $description,
-                          wo.type = $wo_type, wo.status = $status, wo.created_at = datetime()
+                          wo.type = $wo_type, wo.status = $status,
+                          wo.plant_id = $plant_id, wo.created_at = datetime()
             ON MATCH SET  wo.title = $title, wo.description = $description,
-                          wo.type = $wo_type, wo.status = $status, wo.updated_at = datetime()
+                          wo.type = $wo_type, wo.status = $status,
+                          wo.plant_id = COALESCE($plant_id, wo.plant_id), wo.updated_at = datetime()
             WITH wo
-            MATCH (e:Equipment {tag: $tag})
-            MERGE (wo)-[:PERFORMED_ON]->(e)
+            OPTIONAL MATCH (e:Equipment {tag: $tag})
+            FOREACH (_ IN CASE WHEN e IS NULL THEN [] ELSE [1] END |
+                MERGE (wo)-[:PERFORMED_ON]->(e)
+            )
             """,
             wo_id=wo_id, title=title, description=description,
-            wo_type=wo_type, tag=equipment_tag, status=status,
+            wo_type=wo_type, tag=equipment_tag, status=status, plant_id=plant_id,
         )
         if assigned_to:
             tx.run(
@@ -487,14 +549,16 @@ class IndustrialGraphStore:
             )
 
     @staticmethod
-    def _merge_document(tx, doc_id: str, title: str, doc_type: str, equipment_tag: str, area_id: str):
+    def _merge_document(tx, doc_id: str, title: str, doc_type: str, equipment_tag: str, area_id: str, plant_id: Optional[str] = None):
         tx.run(
             """
             MERGE (d:Document {doc_id: $doc_id})
-            ON CREATE SET d.title = $title, d.type = $doc_type, d.created_at = datetime()
-            ON MATCH SET  d.title = $title, d.type = $doc_type, d.updated_at = datetime()
+            ON CREATE SET d.title = $title, d.type = $doc_type,
+                          d.plant_id = $plant_id, d.created_at = datetime()
+            ON MATCH SET  d.title = $title, d.type = $doc_type,
+                          d.plant_id = COALESCE($plant_id, d.plant_id), d.updated_at = datetime()
             """,
-            doc_id=doc_id, title=title, doc_type=doc_type,
+            doc_id=doc_id, title=title, doc_type=doc_type, plant_id=plant_id,
         )
         if equipment_tag:
             tx.run(
@@ -518,20 +582,23 @@ class IndustrialGraphStore:
     @staticmethod
     def _merge_inspection(
         tx, inspection_id: str, title: str, equipment_tag: str,
-        inspector: str, result: str, date: str,
+        inspector: str, result: str, date: str, plant_id: Optional[str] = None,
     ):
         tx.run(
             """
             MERGE (insp:Inspection {inspection_id: $inspection_id})
             ON CREATE SET insp.title = $title, insp.result = $result,
-                          insp.date = $date, insp.created_at = datetime()
-            ON MATCH SET  insp.title = $title, insp.result = $result, insp.updated_at = datetime()
+                          insp.date = $date, insp.plant_id = $plant_id, insp.created_at = datetime()
+            ON MATCH SET  insp.title = $title, insp.result = $result,
+                          insp.plant_id = COALESCE($plant_id, insp.plant_id), insp.updated_at = datetime()
             WITH insp
-            MATCH (e:Equipment {tag: $tag})
-            MERGE (insp)-[:INSPECTED]->(e)
+            OPTIONAL MATCH (e:Equipment {tag: $tag})
+            FOREACH (_ IN CASE WHEN e IS NULL THEN [] ELSE [1] END |
+                MERGE (insp)-[:INSPECTED]->(e)
+            )
             """,
             inspection_id=inspection_id, title=title, tag=equipment_tag,
-            result=result, date=date,
+            result=result, date=date, plant_id=plant_id,
         )
         if inspector:
             tx.run(
@@ -547,17 +614,18 @@ class IndustrialGraphStore:
     # ── Read transaction methods ───────────────────────────────────────────────
 
     @staticmethod
-    def _read_area_id_by_name(tx, name_hint: str) -> Optional[str]:
+    def _read_area_id_by_name(tx, name_hint: str, plant_id: Optional[str] = None) -> Optional[str]:
         result = tx.run(
             """
             MATCH (a:Area)
-            WHERE a.area_id = $name_hint
-               OR toLower(a.name) CONTAINS toLower($name_hint)
-               OR toLower($name_hint) CONTAINS toLower(a.name)
+            WHERE ($plant_id IS NULL OR a.plant_id = $plant_id)
+              AND (a.area_id = $name_hint
+                   OR toLower(a.name) CONTAINS toLower($name_hint)
+                   OR toLower($name_hint) CONTAINS toLower(a.name))
             RETURN a.area_id AS area_id
             LIMIT 1
             """,
-            name_hint=name_hint,
+            name_hint=name_hint, plant_id=plant_id,
         )
         record = result.single()
         return record["area_id"] if record else None
@@ -642,53 +710,111 @@ class IndustrialGraphStore:
 
     @staticmethod
     def _read_all_equipment(tx, plant_id: Optional[str]) -> list[dict]:
-        # Guard against tag-less Equipment nodes an LLM extraction may have
-        # created (kg_agent's discretionary path); they'd render as blank,
-        # unusable options in every equipment dropdown.
-        query = """
+        # Filter by the denormalized plant_id property (set on every write), so
+        # scoping is cheap and also catches equipment not linked into an Area.
+        # The tag guard drops blank-tag nodes an LLM extraction may have created.
+        # Aggregate per equipment node: an asset can be linked to more than one
+        # Area (e.g. a real area + a stray blank-id area an LLM created), which
+        # would otherwise emit duplicate rows. head([… non-blank]) picks one
+        # meaningful area name and collapses each asset to a single row.
+        result = tx.run(
+            """
             MATCH (e:Equipment)
             WHERE e.tag IS NOT NULL AND trim(e.tag) <> ''
-        """
-        if plant_id:
-            query += """
-            MATCH (p:Plant {plant_id: $plant_id})-[:CONTAINS]->(a:Area)-[:CONTAINS]->(e)
-            """
-        else:
-            query += """
+              AND ($plant_id IS NULL OR e.plant_id = $plant_id)
             OPTIONAL MATCH (a:Area)-[:CONTAINS]->(e)
-            """
-        query += """
             OPTIONAL MATCH (e)-[:IS_TYPE]->(ac:AssetClass)
-            RETURN e.tag AS tag, e.name AS name, a.name AS area,
-                   ac.name AS asset_class, toString(e.created_at) AS created_at
+            WITH e,
+                 head([nm IN collect(DISTINCT a.name) WHERE nm IS NOT NULL AND nm <> '']) AS area,
+                 head([nm IN collect(DISTINCT ac.name) WHERE nm IS NOT NULL]) AS asset_class
+            RETURN e.tag AS tag, e.name AS name, area AS area,
+                   asset_class AS asset_class, toString(e.created_at) AS created_at
             ORDER BY e.name
-        """
-        result = tx.run(query, plant_id=plant_id)
+            """,
+            plant_id=plant_id,
+        )
         return [dict(r) for r in result]
 
     @staticmethod
     def _read_all_incidents(tx, limit: int, plant_id: Optional[str]) -> list[dict]:
-        query = """
+        result = tx.run(
+            """
             MATCH (i:Incident)
-        """
-        if plant_id:
-            query += """
-            MATCH (p:Plant {plant_id: $plant_id})-[:CONTAINS]->(a:Area)-[:CONTAINS]->(e:Equipment)
-            MATCH (i)-[:INVOLVED]->(e)
-            """
-        else:
-            query += """
+            WHERE ($plant_id IS NULL OR i.plant_id = $plant_id)
             OPTIONAL MATCH (i)-[:INVOLVED]->(e:Equipment)
-            """
-            
-        query += """
             RETURN i.incident_id AS id, i.title AS title, i.description AS description,
                    i.severity AS severity, COALESCE(i.date, toString(i.created_at)) AS date,
                    e.tag AS equipment_tag, e.name AS equipment_name
             ORDER BY i.created_at DESC
             LIMIT $limit
-        """
-        result = tx.run(query, limit=limit, plant_id=plant_id)
+            """,
+            limit=limit, plant_id=plant_id,
+        )
+        return [dict(r) for r in result]
+
+    @staticmethod
+    def _read_all_work_orders(tx, plant_id: Optional[str]) -> list[dict]:
+        result = tx.run(
+            """
+            MATCH (wo:WorkOrder)
+            WHERE ($plant_id IS NULL OR wo.plant_id = $plant_id)
+            OPTIONAL MATCH (wo)-[:PERFORMED_ON]->(e:Equipment)
+            OPTIONAL MATCH (wo)-[:RESOLVED]->(i:Incident)
+            RETURN wo.wo_id AS wo_id, wo.title AS title, wo.description AS description,
+                   wo.type AS type, wo.status AS status, e.tag AS equipment_tag,
+                   i.incident_id AS incident_id, toString(wo.created_at) AS created_at
+            ORDER BY wo.created_at DESC
+            """,
+            plant_id=plant_id,
+        )
+        return [dict(r) for r in result]
+
+    @staticmethod
+    def _write_wo_status(tx, wo_id: str, status: str) -> bool:
+        result = tx.run(
+            """
+            MATCH (wo:WorkOrder {wo_id: $wo_id})
+            SET wo.status = $status, wo.updated_at = datetime()
+            RETURN wo.wo_id AS wo_id
+            """,
+            wo_id=wo_id, status=status,
+        )
+        return result.single() is not None
+
+    @staticmethod
+    def _read_unresolved_severe_incidents(tx, plant_id: Optional[str]) -> list[dict]:
+        result = tx.run(
+            """
+            MATCH (i:Incident)
+            WHERE ($plant_id IS NULL OR i.plant_id = $plant_id)
+              AND toLower(COALESCE(i.severity, '')) IN ['critical', 'high']
+            OPTIONAL MATCH (i)-[:INVOLVED]->(e:Equipment)
+            OPTIONAL MATCH (wo:WorkOrder)-[:RESOLVED]->(i)
+              WHERE toLower(COALESCE(wo.status, '')) = 'completed'
+            WITH i, e, count(wo) AS done_resolvers
+            WHERE done_resolvers = 0
+            RETURN i.incident_id AS id, i.title AS title,
+                   toLower(i.severity) AS severity, e.tag AS equipment_tag,
+                   i.plant_id AS plant_id
+            ORDER BY i.severity DESC
+            """,
+            plant_id=plant_id,
+        )
+        return [dict(r) for r in result]
+
+    @staticmethod
+    def _read_failed_inspections(tx, plant_id: Optional[str]) -> list[dict]:
+        result = tx.run(
+            """
+            MATCH (insp:Inspection)
+            WHERE ($plant_id IS NULL OR insp.plant_id = $plant_id)
+              AND toLower(COALESCE(insp.result, '')) = 'fail'
+            OPTIONAL MATCH (insp)-[:INSPECTED]->(e:Equipment)
+            RETURN insp.inspection_id AS id, insp.title AS title,
+                   e.tag AS equipment_tag, insp.plant_id AS plant_id
+            """,
+            plant_id=plant_id,
+        )
         return [dict(r) for r in result]
 
     @staticmethod
@@ -713,43 +839,33 @@ class IndustrialGraphStore:
 
     @staticmethod
     def _read_graph_stats(tx, plant_id: Optional[str] = None) -> dict:
-        if not plant_id:
-            labels = ["Plant", "Area", "Equipment", "Incident", "WorkOrder", "Inspection", "Document", "Operator"]
-            stats = {}
-            for label in labels:
+        # Per-label counts, filtered by the denormalized plant_id property when
+        # scoped. Simpler and more robust than a traversal roll-up, and it
+        # counts orphaned (area-less) nodes for the plant too.
+        scoped_labels = ["Area", "Equipment", "Incident", "WorkOrder", "Inspection", "Document"]
+        stats = {}
+        for label in scoped_labels:
+            if plant_id:
+                result = tx.run(
+                    f"MATCH (n:{label}) WHERE n.plant_id = $plant_id RETURN count(n) AS cnt",
+                    plant_id=plant_id,
+                )
+            else:
                 result = tx.run(f"MATCH (n:{label}) RETURN count(n) AS cnt")
-                record = result.single()
-                stats[label] = record["cnt"] if record else 0
-            return stats
+            record = result.single()
+            stats[label] = record["cnt"] if record else 0
 
-        query = """
-        MATCH (p:Plant {plant_id: $plant_id})
-        OPTIONAL MATCH (p)-[:CONTAINS]->(a:Area)
-        WITH p, count(DISTINCT a) as area_count, collect(DISTINCT a) as areas
-        
-        OPTIONAL MATCH (a)-[:CONTAINS]->(e:Equipment) WHERE a IN areas
-        WITH p, area_count, areas, count(DISTINCT e) as eq_count, collect(DISTINCT e) as equipments
-        
-        OPTIONAL MATCH (i:Incident)-[:INVOLVED]->(e) WHERE e IN equipments
-        WITH p, area_count, eq_count, equipments, count(DISTINCT i) as inc_count
-        
-        OPTIONAL MATCH (wo:WorkOrder)-[:PERFORMED_ON]->(e) WHERE e IN equipments
-        WITH p, area_count, eq_count, inc_count, equipments, count(DISTINCT wo) as wo_count
-        
-        OPTIONAL MATCH (insp:Inspection)-[:INSPECTED]->(e) WHERE e IN equipments
-        WITH p, area_count, eq_count, inc_count, wo_count, equipments, count(DISTINCT insp) as insp_count
-        
-        OPTIONAL MATCH (e)-[:HAS_MANUAL]->(d:Document) WHERE e IN equipments
-        WITH p, area_count, eq_count, inc_count, wo_count, insp_count, count(DISTINCT d) as doc_count
-        
-        RETURN 1 as Plant, area_count as Area, eq_count as Equipment, inc_count as Incident, 
-               wo_count as WorkOrder, insp_count as Inspection, doc_count as Document, 0 as Operator
-        """
-        result = tx.run(query, plant_id=plant_id)
-        record = result.single()
-        if record:
-            return dict(record)
-        return {"Plant": 0, "Area": 0, "Equipment": 0, "Incident": 0, "WorkOrder": 0, "Inspection": 0, "Document": 0, "Operator": 0}
+        # Plant + Operator are not plant-stamped: Plant is 1 when scoped (if it
+        # exists), all plants when global; Operator is global either way.
+        if plant_id:
+            rec = tx.run("MATCH (p:Plant {plant_id: $plant_id}) RETURN count(p) AS cnt", plant_id=plant_id).single()
+            stats["Plant"] = rec["cnt"] if rec else 0
+            stats["Operator"] = 0
+        else:
+            for label in ("Plant", "Operator"):
+                rec = tx.run(f"MATCH (n:{label}) RETURN count(n) AS cnt").single()
+                stats[label] = rec["cnt"] if rec else 0
+        return stats
 
 
 # Module-level singleton

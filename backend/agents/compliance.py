@@ -134,6 +134,7 @@ def compliance_analyze(
     equipment_tag: str = "",
     regulation_focus: str = "",
     run_id: str | None = None,
+    plant_id: str | None = None,
 ) -> dict:
     """
     Compliance Brain performs regulatory gap analysis and audit readiness assessment.
@@ -154,28 +155,28 @@ def compliance_analyze(
     # ── Gather context ──────────────────────────────────────────────────────
     reflection = memory.get_reflection("COMPLIANCE", f"Compliance review ({scope})")
 
-    # Graph data
-    graph_context = industrial_graph.get_industrial_overview()
+    # Graph data (plant-scoped)
+    graph_context = industrial_graph.get_industrial_overview(plant_id=plant_id)
     graph_compliance_gaps = []
     if area_id:
         graph_compliance_gaps = industrial_graph.get_compliance_gaps(area_id)
     elif scope == "facility":
         # Check all areas — get plant hierarchy for area IDs
-        hierarchy = industrial_graph.get_plant_hierarchy()
+        hierarchy = industrial_graph.get_plant_hierarchy(plant_id=plant_id)
         for plant in hierarchy:
-            for area in plant.get("areas", []):
-                aid = area.get("area_id", "")
+            for area in plant.get("children", []):
+                aid = area.get("id", "")
                 if aid:
                     area_gaps = industrial_graph.get_compliance_gaps(aid)
                     graph_compliance_gaps.extend(area_gaps)
 
-    # Semantic memory
-    compliance_regs = memory.get_compliance_regs(regulation_focus or "regulatory compliance requirements")
-    sop_data = memory.get_sops("standard operating procedure compliance")
-    incident_data = memory.get_incident_reports("compliance safety incident")
+    # Semantic memory (plant-scoped)
+    compliance_regs = memory.get_compliance_regs(regulation_focus or "regulatory compliance requirements", plant_id=plant_id)
+    sop_data = memory.get_sops("standard operating procedure compliance", plant_id=plant_id)
+    incident_data = memory.get_incident_reports("compliance safety incident", plant_id=plant_id)
     inspection_query = equipment_tag or area_id or "inspection audit compliance"
-    inspection_data = memory.query_semantic("14-inspection-records", inspection_query, n_results=5)
-    lessons_learned = memory.get_all_operational_lessons(limit=5)
+    inspection_data = memory.query_semantic("14-inspection-records", inspection_query, n_results=5, plant_id=plant_id)
+    lessons_learned = memory.get_all_operational_lessons(limit=5, plant_id=plant_id)
 
     task_description = f"Compliance analysis ({scope})"
     if area_id:
@@ -247,6 +248,7 @@ with regulatory requirements. Assess audit readiness. Return the full JSON outpu
         "COMPLIANCE", task_description, flat,
         equipment_tag=equipment_tag,
         context_type="compliance_audit",
+        plant_id=plant_id or "",
     )
     evaluator.evaluate(flat, "COMPLIANCE", settings.COMPLIANCE_MODEL, latency_ms, run_id=run_id)
 

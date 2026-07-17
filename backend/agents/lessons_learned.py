@@ -114,6 +114,7 @@ def lessons_learned_analyze(
     incident_id: str = "",
     analysis_scope: str = "single",
     run_id: str | None = None,
+    plant_id: str | None = None,
 ) -> dict:
     """
     Lessons Learned Brain analyzes incidents and extracts actionable lessons.
@@ -131,21 +132,21 @@ def lessons_learned_analyze(
     llm = get_lessons_learned_agent()
     memory = MemoryStore()
 
-    # ── Gather context ──────────────────────────────────────────────────────
+    # ── Gather context (plant-scoped) ──────────────────────────────────────
     reflection = memory.get_reflection("LESSONS_LEARNED", f"Lessons analysis for {equipment_tag or 'general'}")
-    existing_lessons = memory.get_all_operational_lessons(limit=10)
+    existing_lessons = memory.get_all_operational_lessons(limit=10, plant_id=plant_id)
 
     # Graph data
-    graph_context = industrial_graph.get_industrial_overview()
+    graph_context = industrial_graph.get_industrial_overview(plant_id=plant_id)
     equipment_context = ""
     if equipment_tag:
         equipment_context = industrial_graph.get_equipment_context(equipment_tag)
 
-    all_equipment = industrial_graph.get_all_equipment()
-    all_incidents = industrial_graph.get_all_incidents(limit=20)
+    all_equipment = industrial_graph.get_all_equipment(plant_id=plant_id)
+    all_incidents = industrial_graph.get_all_incidents(limit=20, plant_id=plant_id)
 
     # Semantic data
-    incident_data = memory.get_incident_reports(incident_text or equipment_tag or "incident failure analysis")
+    incident_data = memory.get_incident_reports(incident_text or equipment_tag or "incident failure analysis", plant_id=plant_id)
 
     task_description = f"Lessons learned analysis ({analysis_scope})"
     if equipment_tag:
@@ -206,7 +207,7 @@ Return the full JSON output."""
         }
 
     # Persist lessons to Reflection Memory
-    _persist_lessons(memory, result, equipment_tag, incident_id)
+    _persist_lessons(memory, result, equipment_tag, incident_id, plant_id or "")
 
     cost = estimate_cost(settings.LESSONS_LEARNED_MODEL, response)
     brain_output = parse_brain_output(result, "LESSONS_LEARNED", cost=cost)
@@ -216,13 +217,14 @@ Return the full JSON output."""
         "LESSONS_LEARNED", task_description, flat,
         equipment_tag=equipment_tag,
         context_type="lessons_analysis",
+        plant_id=plant_id or "",
     )
     evaluator.evaluate(flat, "LESSONS_LEARNED", settings.LESSONS_LEARNED_MODEL, latency_ms, run_id=run_id)
 
     return flat
 
 
-def _persist_lessons(memory: MemoryStore, result: dict, equipment_tag: str, incident_id: str) -> None:
+def _persist_lessons(memory: MemoryStore, result: dict, equipment_tag: str, incident_id: str, plant_id: str = "") -> None:
     """
     Write extracted lessons to Reflection Memory so they're automatically
     injected into future agent prompts for the same equipment.
@@ -238,6 +240,7 @@ def _persist_lessons(memory: MemoryStore, result: dict, equipment_tag: str, inci
                 incident_id=lesson.get("incident_id", incident_id),
                 category=lesson.get("category", "operational_failure"),
                 source="incident_report",
+                plant_id=plant_id,
             )
         except Exception:
             continue  # Graceful degradation — don't crash if memory write fails

@@ -124,6 +124,7 @@ def maintenance_analyze(
     analysis_type: str = "full",
     incident_context: str = "",
     run_id: str | None = None,
+    plant_id: str | None = None,
 ) -> dict:
     """
     Maintenance Intelligence Brain performs RCA and failure prediction.
@@ -140,19 +141,19 @@ def maintenance_analyze(
     llm = get_maintenance_agent()
     memory = MemoryStore()
 
-    # ── Gather industrial context ──────────────────────────────────────────
+    # ── Gather industrial context (plant-scoped) ───────────────────────────
     reflection = memory.get_reflection("MAINTENANCE", f"Maintenance analysis for {equipment_tag}")
-    episodic = memory.get_episodic_by_equipment(equipment_tag, limit=5)
+    episodic = memory.get_episodic_by_equipment(equipment_tag, limit=5, plant_id=plant_id)
 
     # Graph data
     equipment_context = industrial_graph.get_equipment_context(equipment_tag)
     asset_timeline = industrial_graph.get_asset_timeline(equipment_tag, limit=15)
-    all_equipment = industrial_graph.get_all_equipment()
+    all_equipment = industrial_graph.get_all_equipment(plant_id=plant_id)
 
     # Semantic memory
-    oem_specs = memory.get_oem_manual(f"maintenance specifications {equipment_tag}")
-    maintenance_logs = memory.get_maintenance_logs(f"maintenance history {equipment_tag}")
-    lessons_learned = memory.get_lessons_by_equipment(equipment_tag, limit=5)
+    oem_specs = memory.get_oem_manual(f"maintenance specifications {equipment_tag}", plant_id=plant_id)
+    maintenance_logs = memory.get_maintenance_logs(f"maintenance history {equipment_tag}", plant_id=plant_id)
+    lessons_learned = memory.get_lessons_by_equipment(equipment_tag, limit=5, plant_id=plant_id)
 
     task_description = f"Maintenance analysis ({analysis_type}) for {equipment_tag}"
     if incident_context:
@@ -211,11 +212,12 @@ assess similar assets too. Return the full JSON output."""
     brain_output = parse_brain_output(result, "MAINTENANCE", cost=cost)
     flat = {**brain_output.model_dump(exclude={"payload"}), **brain_output.payload}
 
-    # Persist to episodic memory, tagged to equipment
+    # Persist to episodic memory, tagged to equipment + plant
     memory.save_episodic_industrial(
         "MAINTENANCE", task_description, flat,
         equipment_tag=equipment_tag,
         context_type="maintenance_analysis",
+        plant_id=plant_id or "",
     )
     evaluator.evaluate(flat, "MAINTENANCE", settings.MAINTENANCE_MODEL, latency_ms, run_id=run_id)
 

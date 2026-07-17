@@ -1,21 +1,33 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb, LogOut
+  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb, LogOut,
+  Globe, BarChart3, Building2, Bell, ClipboardList, TrendingUp, Gauge, Search,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { authApi, alertsApi } from '@/lib/api';
 import { useSureflowStore } from '@/lib/store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const INDUSTRIAL_NAV = [
   { href: '/industrial',            label: 'Plant Overview',     icon: Factory },
+  { href: '/industrial/alerts',     label: 'Alerts',             icon: Bell },
   { href: '/industrial/copilot',    label: 'Industrial Copilot', icon: MessageSquare },
   { href: '/industrial/equipment',  label: 'Equipment',          icon: Cpu },
   { href: '/industrial/maintenance',label: 'Maintenance',        icon: Wrench },
+  { href: '/industrial/work-orders', label: 'Work Orders',       icon: ClipboardList },
   { href: '/industrial/compliance', label: 'Compliance',         icon: ClipboardCheck },
   { href: '/industrial/lessons-learned', label: 'Lessons Learned', icon: Lightbulb },
+  { href: '/industrial/trends',     label: 'Trends',             icon: TrendingUp },
+  { href: '/industrial/ai-quality', label: 'AI Quality',         icon: Gauge },
   { href: '/industrial/upload',     label: 'Doc Upload',         icon: Upload },
+];
+
+const HQ_NAV = [
+  { href: '/industrial/hq',           label: 'HQ Overview',    icon: Globe },
+  { href: '/industrial/hq/compare',   label: 'Compare Plants', icon: BarChart3 },
+  { href: '/industrial/hq/locations', label: 'Locations',      icon: Building2 },
 ];
 
 const BRAIN_COLORS: Record<string, string> = {
@@ -29,8 +41,17 @@ const BRAIN_COLORS: Record<string, string> = {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { agents, fetchAgents } = useSureflowStore();
   const { logout, user, targetPlantId, setTargetPlantId } = useAuth();
+  const [plants, setPlants] = useState<Array<{ plant_id: string; name: string }>>([]);
+  const [alertCount, setAlertCount] = useState(0);
+  const [searchQ, setSearchQ] = useState('');
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQ.trim()) router.push(`/industrial/search?q=${encodeURIComponent(searchQ.trim())}`);
+  };
 
   useEffect(() => {
     fetchAgents();
@@ -39,6 +60,28 @@ export function Sidebar() {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchAgents]);
+
+  // Load accessible plants for the CTO switcher (reflects real/created plants).
+  useEffect(() => {
+    if (user?.role === 'cto') {
+      authApi.me().then(d => setPlants(d.plants)).catch(() => {});
+    }
+  }, [user]);
+
+  // Poll the open-alert count for the sidebar bell badge.
+  useEffect(() => {
+    if (!user) return;
+    const load = () => alertsApi.count().then(d => setAlertCount(d.count)).catch(() => {});
+    load();
+    const iv = setInterval(load, 15000);
+    return () => clearInterval(iv);
+  }, [user, targetPlantId]);
+
+  const onSwitchPlant = (value: string) => {
+    setTargetPlantId(value || null);
+    // Reload so every dashboard re-fetches scoped to the newly selected plant.
+    if (typeof window !== 'undefined') window.location.reload();
+  };
 
   const workingCount = agents.filter(a => a.status === 'working').length;
 
@@ -61,6 +104,11 @@ export function Sidebar() {
       >
         <Icon size={16} style={{ color: isActive ? '#818cf8' : 'var(--text-muted)' }} />
         <span className="flex-1">{label}</span>
+        {href === '/industrial/alerts' && alertCount > 0 && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#ef4444', color: 'white', minWidth: '18px', textAlign: 'center' }}>
+            {alertCount}
+          </span>
+        )}
       </Link>
     );
   };
@@ -96,20 +144,41 @@ export function Sidebar() {
           <div className="text-[10px] font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
             Location Access
           </div>
-          <select 
+          <select
             value={targetPlantId || ''}
-            onChange={(e) => setTargetPlantId(e.target.value || null)}
+            onChange={(e) => onSwitchPlant(e.target.value)}
             className="w-full bg-[#1a1a1a] border border-[#333] text-xs rounded-lg p-2 text-white outline-none focus:border-[#6366f1]"
           >
             <option value="">Global (All Plants)</option>
-            <option value="PLANT-001">Karnataka Plant (PLANT-001)</option>
-            <option value="PLANT-002">Delhi Plant (PLANT-002)</option>
+            {plants.map(p => (
+              <option key={p.plant_id} value={p.plant_id}>{p.name} ({p.plant_id})</option>
+            ))}
           </select>
         </div>
       )}
 
+      {/* Global search */}
+      <form onSubmit={submitSearch} className="px-4 pt-4">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+          <input
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            placeholder="Search everything…"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+          />
+        </div>
+      </form>
+
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {user?.role === 'cto' && (
+          <>
+            <div className="nav-section-label">Headquarters</div>
+            {HQ_NAV.map(renderNavItem)}
+          </>
+        )}
         <div className="nav-section-label">Industrial Intelligence</div>
         {INDUSTRIAL_NAV.map(renderNavItem)}
       </nav>

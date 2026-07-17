@@ -23,6 +23,12 @@ from core.telemetry import setup_telemetry
 from knowledge_graph.industrial_schema import setup_industrial_constraints
 from api.routes import router
 from api.industrial_routes import router as industrial_router
+from api.auth_routes import router as auth_router
+from api.plant_routes import router as plant_router
+from api.hq_routes import router as hq_router
+from api.alert_routes import router as alert_router
+from api.system_routes import router as system_router
+from api.trends_routes import router as trends_router
 
 
 @asynccontextmanager
@@ -55,6 +61,12 @@ app.add_middleware(
 
 app.include_router(router, prefix="/api/v1")
 app.include_router(industrial_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(plant_router, prefix="/api/v1")
+app.include_router(hq_router, prefix="/api/v1")
+app.include_router(alert_router, prefix="/api/v1")
+app.include_router(system_router, prefix="/api/v1")
+app.include_router(trends_router, prefix="/api/v1")
 
 setup_telemetry(app)
 

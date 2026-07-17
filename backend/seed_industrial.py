@@ -30,15 +30,16 @@ def seed_neo4j():
     print("[SEED] Creating plant hierarchy...")
 
     # ── Plant ──────────────────────────────────────────────────────────────────
-    industrial_graph.record_plant("PLT-001", "Rajiv Gandhi Petrochemical Complex", "Jamnagar, Gujarat")
+    industrial_graph.record_plant("PLANT-001", "Karnataka Plant", "Karnataka, India")
+    industrial_graph.record_plant("PLANT-002", "Delhi Plant", "Delhi, India")
 
     # ── Areas ──────────────────────────────────────────────────────────────────
     areas = [
-        ("AREA-001", "Cooling Tower Unit", "PLT-001"),
-        ("AREA-002", "Distillation Column Bay", "PLT-001"),
-        ("AREA-003", "Pump House A", "PLT-001"),
-        ("AREA-004", "Boiler Room", "PLT-001"),
-        ("AREA-005", "Tank Farm", "PLT-001"),
+        ("AREA-001", "Cooling Tower Unit", "PLANT-001"),
+        ("AREA-002", "Distillation Column Bay", "PLANT-001"),
+        ("AREA-003", "Pump House A", "PLANT-001"),
+        ("AREA-004", "Boiler Room", "PLANT-002"),
+        ("AREA-005", "Tank Farm", "PLANT-002"),
     ]
     for area_id, name, plant_id in areas:
         industrial_graph.record_area(area_id, name, plant_id)

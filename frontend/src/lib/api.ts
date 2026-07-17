@@ -76,8 +76,21 @@ import type {
 
 export const industrialApi = {
   // ── Copilot ──
-  copilot: (query: string, conversation_history: Array<{ role: string; content: string }> = []): Promise<CopilotResponse> =>
-    api.post('/industrial/copilot', { query, conversation_history }).then(r => r.data),
+  copilot: (query: string, conversation_history: Array<{ role: string; content: string }> = []): Promise<CopilotResponse> => {
+    let user_role = 'cto';
+    let user_plant_id = undefined;
+    let target_plant_id = undefined;
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sureflow_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        user_role = u.role || 'cto';
+        user_plant_id = u.plantId;
+      }
+      target_plant_id = localStorage.getItem('sureflow_target_plant') || undefined;
+    }
+    return api.post('/industrial/copilot', { query, conversation_history, user_role, user_plant_id, target_plant_id }).then(r => r.data);
+  },
 
   // Streams stage events (Phase 5) as the Copilot works, resolving with the
   // same shape as `copilot()` once the `complete` event arrives.
@@ -85,19 +98,32 @@ export const industrialApi = {
     query: string,
     conversation_history: Array<{ role: string; content: string }> = [],
     onEvent?: (event: any) => void,
-  ): Promise<CopilotResponse> =>
-    streamSSE(
+  ): Promise<CopilotResponse> => {
+    let user_role = 'cto';
+    let user_plant_id = undefined;
+    let target_plant_id = undefined;
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sureflow_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        user_role = u.role || 'cto';
+        user_plant_id = u.plantId;
+      }
+      target_plant_id = localStorage.getItem('sureflow_target_plant') || undefined;
+    }
+    return streamSSE(
       `${api.defaults.baseURL}/industrial/copilot/stream`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, conversation_history }),
+        body: JSON.stringify({ query, conversation_history, user_role, user_plant_id, target_plant_id }),
       },
       onEvent || (() => {}),
     ).then(result => {
       if (!result || result.event === 'error') throw new Error(result?.detail || 'Copilot query failed');
       return result;
-    }),
+    });
+  },
 
   // ── Document Upload ──
   uploadDocument: (file: File, doc_type: string = 'unknown', collection: string = ''): Promise<DocumentUploadResult> => {
@@ -105,6 +131,13 @@ export const industrialApi = {
     form.append('file', file);
     form.append('doc_type', doc_type);
     form.append('collection', collection);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sureflow_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.plantId) form.append('plant_id', u.plantId);
+      }
+    }
     return api.post('/industrial/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 300000, // 5 min for large docs
@@ -123,6 +156,15 @@ export const industrialApi = {
     form.append('file', file);
     form.append('doc_type', doc_type);
     form.append('collection', collection);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sureflow_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.plantId) {
+          form.append('plant_id', u.plantId);
+        }
+      }
+    }
     return streamSSE(
       `${api.defaults.baseURL}/industrial/upload/stream`,
       { method: 'POST', body: form },

@@ -30,6 +30,8 @@ You are the primary conversational interface for plant engineers, operators, and
 You answer questions by combining structured knowledge (Knowledge Graph) with unstructured
 documents (OEM manuals, SOPs, incident reports) to provide comprehensive, cited answers.
 
+{plant_context}
+
 Your Standards:
 1. ACCURACY: Every claim must be traceable to a source. Never fabricate data.
 2. CITATIONS: Always cite your sources — e.g., [OEM Manual: Flowserve Mark III], [Incident INC-003].
@@ -115,6 +117,9 @@ def search_copilot_query(
     query: str,
     conversation_history: list[dict] | None = None,
     run_id: str | None = None,
+    user_role: str = "cto",
+    user_plant_id: str | None = None,
+    target_plant_id: str | None = None,
 ) -> dict:
     """
     Industrial Copilot performs hybrid search and synthesizes an answer.
@@ -133,12 +138,25 @@ def search_copilot_query(
     # Detect equipment tags in the query for targeted retrieval
     equipment_tags = _detect_equipment_tags(query)
 
+    # Determine plant_id context for RBAC
+    effective_plant_id = None
+    if user_role == "plant_manager" and user_plant_id:
+        effective_plant_id = user_plant_id
+    elif target_plant_id:
+        effective_plant_id = target_plant_id
+
+    plant_context = f"You are currently viewing data specifically for the {effective_plant_id} plant. Restrict your answers and insights to this facility." if effective_plant_id else "You have global access across all plants."
+
     # ── Gather context from all knowledge sources ──────────────────────────
     reflection = memory.get_reflection("SEARCH_AGENT", query)
     episodic = memory.get_episodic("SEARCH_AGENT", limit=3)
 
     # Graph context
-    graph_context = industrial_graph.get_industrial_overview()
+    if effective_plant_id:
+        hierarchy = industrial_graph.get_plant_hierarchy(plant_id=effective_plant_id)
+        graph_context = f"Hierarchy for {effective_plant_id}:\n{json.dumps(hierarchy, indent=2)}"
+    else:
+        graph_context = industrial_graph.get_industrial_overview()
     equipment_context = ""
     if equipment_tags:
         equipment_contexts = []
@@ -152,11 +170,11 @@ def search_copilot_query(
         equipment_context = "\n\n".join(equipment_contexts)
 
     # Semantic memory (pgvector) — query all relevant collections
-    oem_data = memory.get_oem_manual(query)
-    compliance_data = memory.get_compliance_regs(query)
-    sop_data = memory.get_sops(query)
-    maintenance_data = memory.get_maintenance_logs(query)
-    incident_data = memory.get_incident_reports(query)
+    oem_data = memory.get_oem_manual(query, plant_id=effective_plant_id)
+    compliance_data = memory.get_compliance_regs(query, plant_id=effective_plant_id)
+    sop_data = memory.get_sops(query, plant_id=effective_plant_id)
+    maintenance_data = memory.get_maintenance_logs(query, plant_id=effective_plant_id)
+    incident_data = memory.get_incident_reports(query, plant_id=effective_plant_id)
 
     # Lessons learned — both general and equipment-specific
     lessons = memory.get_all_operational_lessons(limit=5)
@@ -198,6 +216,7 @@ for every claim. Return the full JSON output."""
         _start = time.perf_counter()
         response = chain.invoke({
             "query": query,
+            "plant_context": plant_context,
             "conversation_history": json.dumps(conversation_history or []),
             "graph_context": graph_context,
             "equipment_context": equipment_context or "No specific equipment detected in query.",

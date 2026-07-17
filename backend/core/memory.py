@@ -114,14 +114,14 @@ class MemoryStore:
 
     # ── Semantic Memory (RAG) ──────────────────────────────────────────────────
 
-    def query_semantic(self, collection: str, query: str, n_results: int = 3) -> list[dict]:
+    def query_semantic(self, collection: str, query: str, n_results: int = 3, plant_id: Optional[str] = None) -> list[dict]:
         """
         Delegate to the pgvector-backed RAG system.
         Returns list of {content, metadata} dicts.
         """
         try:
             from rag.embeddings import query_collection
-            return query_collection(collection, query, n_results)
+            return query_collection(collection, query, n_results, plant_id=plant_id)
         except Exception:
             return []
 
@@ -294,29 +294,29 @@ class MemoryStore:
 
     # ── Industrial Semantic Memory (RAG) ───────────────────────────────────────
 
-    def get_oem_manual(self, query: str = "") -> str:
+    def get_oem_manual(self, query: str = "", plant_id: Optional[str] = None) -> str:
         """Query OEM manuals for equipment specs, procedures, etc."""
-        results = self.query_semantic("10-oem-manuals", query or "equipment specifications operating procedure", n_results=4)
+        results = self.query_semantic("10-oem-manuals", query or "equipment specifications operating procedure", n_results=4, plant_id=plant_id)
         return "\n".join(r["content"] for r in results) or "No OEM manual data available."
 
-    def get_compliance_regs(self, query: str = "") -> str:
+    def get_compliance_regs(self, query: str = "", plant_id: Optional[str] = None) -> str:
         """Query compliance regulations (OSHA, ISO, Factory Act)."""
-        results = self.query_semantic("11-compliance-regs", query or "safety regulation compliance", n_results=4)
+        results = self.query_semantic("11-compliance-regs", query or "safety regulation compliance", n_results=4, plant_id=plant_id)
         return "\n".join(r["content"] for r in results) or "No compliance regulation data available."
 
-    def get_sops(self, query: str = "") -> str:
+    def get_sops(self, query: str = "", plant_id: Optional[str] = None) -> str:
         """Query Standard Operating Procedures."""
-        results = self.query_semantic("12-sops", query or "standard operating procedure", n_results=4)
+        results = self.query_semantic("12-sops", query or "standard operating procedure", n_results=4, plant_id=plant_id)
         return "\n".join(r["content"] for r in results) or "No SOPs available."
 
-    def get_maintenance_logs(self, query: str = "") -> str:
+    def get_maintenance_logs(self, query: str = "", plant_id: Optional[str] = None) -> str:
         """Query historical maintenance logs."""
-        results = self.query_semantic("13-maintenance-logs", query or "maintenance work order repair", n_results=4)
+        results = self.query_semantic("13-maintenance-logs", query or "maintenance work order repair", n_results=4, plant_id=plant_id)
         return "\n".join(r["content"] for r in results) or "No maintenance log data available."
 
-    def get_incident_reports(self, query: str = "") -> str:
+    def get_incident_reports(self, query: str = "", plant_id: Optional[str] = None) -> str:
         """Query incident and CAPA reports."""
-        results = self.query_semantic("15-incident-reports", query or "incident failure root cause", n_results=4)
+        results = self.query_semantic("15-incident-reports", query or "incident failure root cause", n_results=4, plant_id=plant_id)
         return "\n".join(r["content"] for r in results) or "No incident report data available."
 
 

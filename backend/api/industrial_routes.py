@@ -35,6 +35,9 @@ router = APIRouter()
 class CopilotQueryRequest(BaseModel):
     query: str
     conversation_history: list[dict] = []
+    user_role: str = "cto"
+    user_plant_id: Optional[str] = None
+    target_plant_id: Optional[str] = None
 
 
 class MaintenanceRequest(BaseModel):
@@ -147,6 +150,7 @@ async def upload_industrial_document(
     file: UploadFile = File(...),
     doc_type: str = Form("unknown"),
     collection: str = Form(""),
+    plant_id: str = Form(""),
 ):
     """
     Upload an industrial document and trigger the ingestion pipeline.
@@ -195,7 +199,7 @@ async def upload_industrial_document(
             from rag.embeddings import ingest_document
             embed_result = await run_in_threadpool(
                 ingest_document, tmp_path, target_collection,
-                metadata={"original_name": file.filename, "doc_type": detected_type, "run_id": run_id},
+                metadata={"original_name": file.filename, "doc_type": detected_type, "run_id": run_id, "plant_id": plant_id},
             )
         except Exception as e:
             embed_result = {"error": str(e), "chunks_ingested": 0}
@@ -247,6 +251,7 @@ async def upload_industrial_document_stream(
     file: UploadFile = File(...),
     doc_type: str = Form("unknown"),
     collection: str = Form(""),
+    plant_id: str = Form(""),
 ):
     """
     Same ingestion pipeline as /industrial/upload, but streams a real SSE
@@ -292,7 +297,7 @@ async def upload_industrial_document_stream(
                 from rag.embeddings import ingest_document
                 embed_result = await run_in_threadpool(
                     ingest_document, tmp_path, target_collection,
-                    metadata={"original_name": file.filename, "doc_type": detected_type, "run_id": run_id},
+                    metadata={"original_name": file.filename, "doc_type": detected_type, "run_id": run_id, "plant_id": plant_id},
                 )
             except Exception as e:
                 embed_result = {"error": str(e), "chunks_ingested": 0}
@@ -361,6 +366,9 @@ async def copilot_query(body: CopilotQueryRequest):
         query=body.query,
         conversation_history=body.conversation_history,
         run_id=run_id,
+        user_role=body.user_role,
+        user_plant_id=body.user_plant_id,
+        target_plant_id=body.target_plant_id,
     )
     return {
         "run_id": run_id,
@@ -398,6 +406,9 @@ async def copilot_query_stream(body: CopilotQueryRequest):
                 query=body.query,
                 conversation_history=body.conversation_history,
                 run_id=run_id,
+                user_role=body.user_role,
+                user_plant_id=body.user_plant_id,
+                target_plant_id=body.target_plant_id,
             )
             yield f"data: {json.dumps({'event': 'complete', 'run_id': run_id, **result})}\n\n"
         except Exception as e:

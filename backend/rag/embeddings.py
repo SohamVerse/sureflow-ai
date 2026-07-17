@@ -117,7 +117,7 @@ def _embed_query_cached(query: str) -> tuple[float, ...]:
     return tuple(vector)
 
 
-def query_collection(collection_name: str, query: str, n_results: int = 5) -> list[dict]:
+def query_collection(collection_name: str, query: str, n_results: int = 5, plant_id: Optional[str] = None) -> list[dict]:
     """
     Semantic search over a collection via pgvector cosine distance.
     Returns list of matching document chunks with metadata.
@@ -127,13 +127,12 @@ def query_collection(collection_name: str, query: str, n_results: int = 5) -> li
     db = SessionLocal()
     try:
         distance = VaultDocument.embedding.cosine_distance(query_embedding)
-        rows = (
-            db.query(VaultDocument, distance.label("distance"))
-            .filter(VaultDocument.collection == collection_name)
-            .order_by(distance)
-            .limit(n_results)
-            .all()
-        )
+        base_query = db.query(VaultDocument, distance.label("distance")).filter(VaultDocument.collection == collection_name)
+        
+        if plant_id:
+            base_query = base_query.filter(VaultDocument.meta_data["plant_id"].astext == plant_id)
+            
+        rows = base_query.order_by(distance).limit(n_results).all()
     finally:
         db.close()
 

@@ -30,19 +30,20 @@ def seed():
     print("[SEED] Neo4j industrial constraints ready.")
 
     # ── 1. Plant ─────────────────────────────────────────────────────────────
-    industrial_graph.record_plant("PLANT-001", "Petrochemical Complex Alpha", "Gujarat, India")
-    print("[SEED] Created Plant: Petrochemical Complex Alpha")
+    industrial_graph.record_plant("PLANT-001", "Karnataka Plant", "Karnataka, India")
+    industrial_graph.record_plant("PLANT-002", "Delhi Plant", "Delhi, India")
+    print("[SEED] Created Plants: Karnataka, Delhi")
 
     # ── 2. Areas ─────────────────────────────────────────────────────────────
     areas = [
-        ("AREA-100", "Pump House A"),
-        ("AREA-200", "Distillation Bay"),
-        ("AREA-300", "Cooling Tower Area"),
-        ("AREA-400", "Compressor Station"),
-        ("AREA-500", "Utility & Power"),
+        ("AREA-100", "Pump House A", "PLANT-001"),
+        ("AREA-200", "Distillation Bay", "PLANT-001"),
+        ("AREA-300", "Cooling Tower Area", "PLANT-001"),
+        ("AREA-400", "Compressor Station", "PLANT-002"),
+        ("AREA-500", "Utility & Power", "PLANT-002"),
     ]
-    for area_id, name in areas:
-        industrial_graph.record_area(area_id, name, "PLANT-001")
+    for area_id, name, plant_id in areas:
+        industrial_graph.record_area(area_id, name, plant_id)
     print(f"[SEED] Created {len(areas)} Areas")
 
     # ── 3. Equipment ─────────────────────────────────────────────────────────

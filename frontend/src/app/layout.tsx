@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 
 import { Toaster } from 'react-hot-toast';
 
+import { AuthProvider } from '@/lib/AuthContext';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -17,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       </head>
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         {/* <Toaster position="bottom-right" toastOptions={{
           style: {
             background: 'var(--bg-secondary)',

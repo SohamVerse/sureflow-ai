@@ -160,7 +160,7 @@ export default function IndustrialDashboard() {
           <div className="space-y-3">
             {industrialIncidents.slice(0, 8).map((incident, i) => (
               <div
-                key={incident.id}
+                key={`${incident.id}-${i}`}
                 className="flex items-center gap-4 p-4 rounded-xl animate-fade-in-up"
                 style={{
                   background: 'rgba(255,255,255,0.02)',

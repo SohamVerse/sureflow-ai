@@ -209,7 +209,7 @@ class IndustrialGraphStore:
             logger.warning(f"Failed to read equipment detail from Neo4j: {e}")
             return None
 
-    def get_plant_hierarchy(self) -> list[dict]:
+    def get_plant_hierarchy(self, plant_id: Optional[str] = None) -> list[dict]:
         """
         Return the full Plant -> Area -> Equipment tree as a nested
         {id, name, type, children, ...} structure — the shape the frontend's
@@ -218,7 +218,7 @@ class IndustrialGraphStore:
         try:
             driver = get_driver()
             with driver.session() as session:
-                rows = session.execute_read(self._read_plant_hierarchy)
+                rows = session.execute_read(self._read_plant_hierarchy, plant_id)
             return [self._to_hierarchy_node(row) for row in rows]
         except Exception as e:
             logger.warning(f"Failed to read plant hierarchy from Neo4j: {e}")
@@ -250,22 +250,22 @@ class IndustrialGraphStore:
             "equipment_count": total_equipment,
         }
 
-    def get_all_equipment(self) -> list[dict]:
+    def get_all_equipment(self, plant_id: Optional[str] = None) -> list[dict]:
         """Return all equipment nodes."""
         try:
             driver = get_driver()
             with driver.session() as session:
-                return session.execute_read(self._read_all_equipment)
+                return session.execute_read(self._read_all_equipment, plant_id)
         except Exception as e:
             logger.warning(f"Failed to list equipment from Neo4j: {e}")
             return []
 
-    def get_all_incidents(self, limit: int = 50) -> list[dict]:
+    def get_all_incidents(self, limit: int = 50, plant_id: Optional[str] = None) -> list[dict]:
         """Return recent incidents."""
         try:
             driver = get_driver()
             with driver.session() as session:
-                return session.execute_read(self._read_all_incidents, limit)
+                return session.execute_read(self._read_all_incidents, limit, plant_id)
         except Exception as e:
             logger.warning(f"Failed to list incidents from Neo4j: {e}")
             return []
@@ -613,15 +613,18 @@ class IndustrialGraphStore:
         return data
 
     @staticmethod
-    def _read_plant_hierarchy(tx) -> list[dict]:
+    def _read_plant_hierarchy(tx, plant_id: Optional[str]) -> list[dict]:
         # Neo4j disallows nesting one aggregate function inside another
         # (collect() inside collect()), so equipment must be aggregated per
         # (plant, area) in its own WITH stage before areas are aggregated per
         # plant. Each stage also filters out the placeholder null produced by
         # an OPTIONAL MATCH that found nothing for that row.
-        result = tx.run(
-            """
+        query = """
             MATCH (p:Plant)
+        """
+        if plant_id:
+            query += " WHERE p.plant_id = $plant_id "
+        query += """
             OPTIONAL MATCH (p)-[:CONTAINS]->(a:Area)
             OPTIONAL MATCH (a)-[:CONTAINS]->(e:Equipment)
             WITH p, a, collect(DISTINCT CASE WHEN e IS NULL THEN NULL ELSE {tag: e.tag, name: e.name} END) AS equip_raw
@@ -630,42 +633,59 @@ class IndustrialGraphStore:
             WITH p, [x IN areas_raw WHERE x IS NOT NULL] AS areas
             RETURN p.plant_id AS plant_id, p.name AS plant_name, p.location AS location, areas
             ORDER BY p.name
-            """
-        )
+        """
+        result = tx.run(query, plant_id=plant_id)
         return [dict(r) for r in result]
 
     @staticmethod
-    def _read_all_equipment(tx) -> list[dict]:
+    def _read_all_equipment(tx, plant_id: Optional[str]) -> list[dict]:
         # Guard against tag-less Equipment nodes an LLM extraction may have
         # created (kg_agent's discretionary path); they'd render as blank,
         # unusable options in every equipment dropdown.
-        result = tx.run(
-            """
+        query = """
             MATCH (e:Equipment)
             WHERE e.tag IS NOT NULL AND trim(e.tag) <> ''
+        """
+        if plant_id:
+            query += """
+            MATCH (p:Plant {plant_id: $plant_id})-[:CONTAINS]->(a:Area)-[:CONTAINS]->(e)
+            """
+        else:
+            query += """
             OPTIONAL MATCH (a:Area)-[:CONTAINS]->(e)
+            """
+        query += """
             OPTIONAL MATCH (e)-[:IS_TYPE]->(ac:AssetClass)
             RETURN e.tag AS tag, e.name AS name, a.name AS area,
                    ac.name AS asset_class, toString(e.created_at) AS created_at
             ORDER BY e.name
-            """
-        )
+        """
+        result = tx.run(query, plant_id=plant_id)
         return [dict(r) for r in result]
 
     @staticmethod
-    def _read_all_incidents(tx, limit: int) -> list[dict]:
-        result = tx.run(
-            """
+    def _read_all_incidents(tx, limit: int, plant_id: Optional[str]) -> list[dict]:
+        query = """
             MATCH (i:Incident)
+        """
+        if plant_id:
+            query += """
+            MATCH (p:Plant {plant_id: $plant_id})-[:CONTAINS]->(a:Area)-[:CONTAINS]->(e:Equipment)
+            MATCH (i)-[:INVOLVED]->(e)
+            """
+        else:
+            query += """
             OPTIONAL MATCH (i)-[:INVOLVED]->(e:Equipment)
+            """
+            
+        query += """
             RETURN i.incident_id AS id, i.title AS title, i.description AS description,
                    i.severity AS severity, COALESCE(i.date, toString(i.created_at)) AS date,
                    e.tag AS equipment_tag, e.name AS equipment_name
             ORDER BY i.created_at DESC
             LIMIT $limit
-            """,
-            limit=limit,
-        )
+        """
+        result = tx.run(query, limit=limit, plant_id=plant_id)
         return [dict(r) for r in result]
 
     @staticmethod

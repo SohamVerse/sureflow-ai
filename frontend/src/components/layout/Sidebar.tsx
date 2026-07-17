@@ -2,8 +2,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb,
+  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb, LogOut
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 import { useSureflowStore } from '@/lib/store';
 import { useEffect } from 'react';
 
@@ -29,6 +30,7 @@ const BRAIN_COLORS: Record<string, string> = {
 export function Sidebar() {
   const pathname = usePathname();
   const { agents, fetchAgents } = useSureflowStore();
+  const { logout, user, targetPlantId, setTargetPlantId } = useAuth();
 
   useEffect(() => {
     fetchAgents();
@@ -88,6 +90,24 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Location Selector (CTO Only) */}
+      {user && user.role === 'cto' && (
+        <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="text-[10px] font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+            Location Access
+          </div>
+          <select 
+            value={targetPlantId || ''}
+            onChange={(e) => setTargetPlantId(e.target.value || null)}
+            className="w-full bg-[#1a1a1a] border border-[#333] text-xs rounded-lg p-2 text-white outline-none focus:border-[#6366f1]"
+          >
+            <option value="">Global (All Plants)</option>
+            <option value="PLANT-001">Karnataka Plant (PLANT-001)</option>
+            <option value="PLANT-002">Delhi Plant (PLANT-002)</option>
+          </select>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         <div className="nav-section-label">Industrial Intelligence</div>
@@ -134,6 +154,25 @@ export function Sidebar() {
           </div>
         )}
       </div>
+
+      {/* User Profile / Logout */}
+      {user && (
+        <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{user.name}</span>
+              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{user.role}</span>
+            </div>
+            <button 
+              onClick={logout}
+              className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+              title="Logout"
+            >
+              <LogOut size={16} style={{ color: 'var(--text-secondary)' }} />
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

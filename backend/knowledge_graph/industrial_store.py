@@ -302,34 +302,37 @@ class IndustrialGraphStore:
             lines.append(f"  Recent work orders: {len(detail['work_orders'])}")
         return "\n".join(lines)
 
-    _stats_cache: Optional[dict] = None
-    _stats_cache_at: float = 0.0
+    _stats_cache_dict: dict = {}
 
-    def _get_cached_graph_stats(self) -> dict:
+    def _get_cached_graph_stats(self, plant_id: Optional[str] = None) -> dict:
         """Raw {label: count} node counts, cached for _OVERVIEW_CACHE_TTL_SECONDS
         since this hits Neo4j on every Copilot query and dashboard load for
         counts that rarely change. Backs both get_industrial_overview() (text,
         for agent prompt context) and get_graph_stats() (structured, for the
         dashboard API)."""
         now = time.monotonic()
-        if self._stats_cache is not None and (now - self._stats_cache_at) < _OVERVIEW_CACHE_TTL_SECONDS:
-            return self._stats_cache
+        cache_key = plant_id or "global"
+        if not hasattr(self, "_stats_cache_dict"):
+            self._stats_cache_dict = {}
+            
+        cached = self._stats_cache_dict.get(cache_key)
+        if cached and (now - cached["time"]) < _OVERVIEW_CACHE_TTL_SECONDS:
+            return cached["data"]
 
         try:
             driver = get_driver()
             with driver.session() as session:
-                stats = session.execute_read(self._read_graph_stats)
+                stats = session.execute_read(self._read_graph_stats, plant_id)
         except Exception as e:
             logger.warning(f"Failed to read graph stats: {e}")
             stats = {}
 
-        self._stats_cache = stats
-        self._stats_cache_at = now
+        self._stats_cache_dict[cache_key] = {"time": now, "data": stats}
         return stats
 
-    def get_industrial_overview(self) -> str:
+    def get_industrial_overview(self, plant_id: Optional[str] = None) -> str:
         """Summary of the industrial knowledge graph for CEO/Copilot context."""
-        stats = self._get_cached_graph_stats()
+        stats = self._get_cached_graph_stats(plant_id)
         if not stats:
             return "Industrial Knowledge Graph unavailable."
         lines = ["Industrial Knowledge Graph Summary:"]
@@ -337,12 +340,12 @@ class IndustrialGraphStore:
             lines.append(f"  • {label}: {count}")
         return "\n".join(lines)
 
-    def get_graph_stats(self) -> dict:
+    def get_graph_stats(self, plant_id: Optional[str] = None) -> dict:
         """Structured node counts for the dashboard's KPI tiles and Knowledge
         Graph Stats panel — matches the frontend's GraphOverview type exactly
         (plants, areas, equipment, incidents, work_orders, inspections,
         documents), unlike get_industrial_overview()'s prompt-context string."""
-        stats = self._get_cached_graph_stats()
+        stats = self._get_cached_graph_stats(plant_id)
         return {
             "plants": stats.get("Plant", 0),
             "areas": stats.get("Area", 0),
@@ -709,14 +712,44 @@ class IndustrialGraphStore:
         return [dict(r) for r in result]
 
     @staticmethod
-    def _read_graph_stats(tx) -> dict:
-        labels = ["Plant", "Area", "Equipment", "Incident", "WorkOrder", "Inspection", "Document", "Operator"]
-        stats = {}
-        for label in labels:
-            result = tx.run(f"MATCH (n:{label}) RETURN count(n) AS cnt")
-            record = result.single()
-            stats[label] = record["cnt"] if record else 0
-        return stats
+    def _read_graph_stats(tx, plant_id: Optional[str] = None) -> dict:
+        if not plant_id:
+            labels = ["Plant", "Area", "Equipment", "Incident", "WorkOrder", "Inspection", "Document", "Operator"]
+            stats = {}
+            for label in labels:
+                result = tx.run(f"MATCH (n:{label}) RETURN count(n) AS cnt")
+                record = result.single()
+                stats[label] = record["cnt"] if record else 0
+            return stats
+
+        query = """
+        MATCH (p:Plant {plant_id: $plant_id})
+        OPTIONAL MATCH (p)-[:CONTAINS]->(a:Area)
+        WITH p, count(DISTINCT a) as area_count, collect(DISTINCT a) as areas
+        
+        OPTIONAL MATCH (a)-[:CONTAINS]->(e:Equipment) WHERE a IN areas
+        WITH p, area_count, areas, count(DISTINCT e) as eq_count, collect(DISTINCT e) as equipments
+        
+        OPTIONAL MATCH (i:Incident)-[:INVOLVED]->(e) WHERE e IN equipments
+        WITH p, area_count, eq_count, equipments, count(DISTINCT i) as inc_count
+        
+        OPTIONAL MATCH (wo:WorkOrder)-[:PERFORMED_ON]->(e) WHERE e IN equipments
+        WITH p, area_count, eq_count, inc_count, equipments, count(DISTINCT wo) as wo_count
+        
+        OPTIONAL MATCH (insp:Inspection)-[:INSPECTED]->(e) WHERE e IN equipments
+        WITH p, area_count, eq_count, inc_count, wo_count, equipments, count(DISTINCT insp) as insp_count
+        
+        OPTIONAL MATCH (e)-[:HAS_MANUAL]->(d:Document) WHERE e IN equipments
+        WITH p, area_count, eq_count, inc_count, wo_count, insp_count, count(DISTINCT d) as doc_count
+        
+        RETURN 1 as Plant, area_count as Area, eq_count as Equipment, inc_count as Incident, 
+               wo_count as WorkOrder, insp_count as Inspection, doc_count as Document, 0 as Operator
+        """
+        result = tx.run(query, plant_id=plant_id)
+        record = result.single()
+        if record:
+            return dict(record)
+        return {"Plant": 0, "Area": 0, "Equipment": 0, "Incident": 0, "WorkOrder": 0, "Inspection": 0, "Document": 0, "Operator": 0}
 
 
 # Module-level singleton

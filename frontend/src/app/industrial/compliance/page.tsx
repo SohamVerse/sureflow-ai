@@ -141,10 +141,11 @@ export default function ComplianceDashboard() {
           )}
 
           {/* Regulation Focus */}
-          <div>
+          <div className="relative">
             <label className="text-xs font-semibold mb-2 block" style={{ color: 'var(--text-muted)' }}>Regulation Focus</label>
             <input
               type="text"
+              list="regulation-suggestions"
               value={regulationFocus}
               onChange={e => setRegulationFocus(e.target.value)}
               placeholder="e.g. OSHA, ISO 14001..."
@@ -155,6 +156,17 @@ export default function ComplianceDashboard() {
                 color: 'var(--text-primary)',
               }}
             />
+            <datalist id="regulation-suggestions">
+              <option value="OSHA" />
+              <option value="ISO 14001" />
+              <option value="ISO 9001" />
+              <option value="ISO 45001" />
+              <option value="EPA" />
+              <option value="FDA" />
+            </datalist>
+            <p className="text-[10px] absolute -bottom-5 left-1 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+              Type any regulatory body or standard to guide the AI's analysis.
+            </p>
           </div>
 
           {/* Run Button */}

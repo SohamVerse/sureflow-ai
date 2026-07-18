@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { Zap } from 'lucide-react';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Icon Boxes — dark rounded squares with colored icons inside
@@ -576,11 +575,10 @@ export function HeroSection() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
-                  width: '24px', height: '24px', borderRadius: '6px',
-                  background: 'transparent',
+                  width: '24px', height: '24px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Zap size={20} color="#a855f7" fill="#a855f7" />
+                  <img src="/logo.png" alt="SureFlow" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
                 </div>
                 <span style={{
                   fontWeight: 800,

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Zap, Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb, LogOut,
+  Factory, MessageSquare, Wrench, ClipboardCheck, Upload, Cpu, Lightbulb, LogOut,
   Globe, BarChart3, Building2, Bell, ClipboardList, TrendingUp, Gauge, Search,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -124,11 +124,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div
-          className="flex items-center justify-center w-9 h-9 rounded-xl"
-          style={{ background: 'linear-gradient(135deg, #a855f7, #6d28d9)' }}
-        >
-          <Zap size={18} color="white" />
+        <div className="flex items-center justify-center w-9 h-9">
+          <img src="/logo.png" alt="SureFlow" className="w-8 h-8 object-contain" />
         </div>
         <div>
           <div className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>SureFlow</div>

@@ -1,4 +1,3 @@
-import { Zap } from 'lucide-react';
 
 const NAV_LINKS = ['Why SureFlow', 'Platform', 'Capabilities', 'Integrations', 'Resources', 'Company'];
 
@@ -17,11 +16,8 @@ export function Navbar() {
       />
       <nav className="relative max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         <div className="flex items-center gap-3">
-          <div
-            className="flex items-center justify-center w-9 h-9 rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
-          >
-            <Zap size={18} color="white" />
+          <div className="flex items-center justify-center w-9 h-9">
+            <img src="/logo.png" alt="SureFlow" className="w-8 h-8 object-contain" />
           </div>
           <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>SureFlow</span>
         </div>

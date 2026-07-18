@@ -1,5 +1,5 @@
 """
-Industrial Intelligence API Routes — SureFlow OS Phase 3.
+Industrial Intelligence API Routes — SureFlow AI Phase 3.
 
 New endpoints for the Industrial Intelligence Platform:
   - Document upload & ingestion pipeline trigger

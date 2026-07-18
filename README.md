@@ -2,7 +2,7 @@
 
 <img src="frontend/public/logo.png" alt="SureFlow Logo" width="120" />
 
-# SureFlow OS
+# SureFlow AI
 
 ### The Agentic Operating System for Heavy Industry
 
@@ -107,7 +107,7 @@ Verify it's healthy:
 ```bash
 docker compose ps
 curl http://localhost:8000/api/v1/health
-# → {"status":"online","service":"SureFlow OS","version":"2.0.0"}
+# → {"status":"online","service":"SureFlow AI","version":"2.0.0"}
 ```
 
 ### 3️⃣ Seed the demo data
@@ -511,7 +511,7 @@ const nextConfig = { turbopack: { root: __dirname } };
 ## 🏗 Architecture
 
 <div align="center">
-  <img src="frontend/public/architecture.svg" alt="SureFlow OS Architecture" width="800" />
+  <img src="frontend/public/architecture.svg" alt="SureFlow AI Architecture" width="800" />
 </div>
 
 ### Key data flows
@@ -636,7 +636,7 @@ Everything needed to **run** the product is in this file. These go deeper:
 
 <div align="center">
 
-**SureFlow OS** — built for the ET Gen AI 2.0 Hackathon 🏆
+**SureFlow AI** — built for the ET Gen AI 2.0 Hackathon 🏆
 
 *Turning shelf-ware documents into operating intelligence.*
 

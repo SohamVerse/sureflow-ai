@@ -1,4 +1,4 @@
-# SureFlow OS — Industrial Intelligence Demo Script
+# SureFlow AI — Industrial Intelligence Demo Script
 
 A guided walkthrough for presenting the Industrial Intelligence Platform (Petrochemical Complex Alpha demo dataset). ~8-10 minutes end to end.
 

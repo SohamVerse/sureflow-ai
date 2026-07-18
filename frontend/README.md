@@ -1,6 +1,6 @@
-# SureFlow OS — Frontend
+# SureFlow AI — Frontend
 
-The Next.js 16 web application for [SureFlow OS](../README.md). Runs on the host (it is deliberately
+The Next.js 16 web application for [SureFlow AI](../README.md). Runs on the host (it is deliberately
 not part of `docker-compose.yml`) and talks to the FastAPI backend on port 8000.
 
 ---

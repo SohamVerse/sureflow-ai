@@ -1,5 +1,5 @@
 """
-Search Brain (Industrial Copilot) — SureFlow OS Phase 2.
+Search Brain (Industrial Copilot) — SureFlow AI Phase 2.
 
 The conversational interface — the main way users interact with the system.
 Implements hybrid search: Cypher graph traversal + pgvector semantic search,

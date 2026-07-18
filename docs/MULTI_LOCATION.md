@@ -1,6 +1,6 @@
-# SureFlow OS — Multi-Location (Multi-Plant) Extension
+# SureFlow AI — Multi-Location (Multi-Plant) Extension
 
-Design & scope document for extending SureFlow OS from a single-plant tool into a **multi-location enterprise platform**: many plants, each with isolated logins and data, plus a global **HQ / CTO** view that spans, compares, and provisions all of them.
+Design & scope document for extending SureFlow AI from a single-plant tool into a **multi-location enterprise platform**: many plants, each with isolated logins and data, plus a global **HQ / CTO** view that spans, compares, and provisions all of them.
 
 > Read the base platform first: [`README.md`](../README.md).
 
@@ -8,7 +8,7 @@ Design & scope document for extending SureFlow OS from a single-plant tool into 
 
 ## 1. Problem Statement
 
-Today SureFlow OS assumes **one plant**. A real industrial enterprise runs **many plants** across regions. We need:
+Today SureFlow AI assumes **one plant**. A real industrial enterprise runs **many plants** across regions. We need:
 
 1. **Per-location login & isolation** — each plant's staff log in and see **only their own** equipment, incidents, documents, and AI insights. No cross-plant data leakage.
 2. **A global HQ / CTO role** — a headquarters user who can:

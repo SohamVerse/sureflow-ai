@@ -1,5 +1,5 @@
 """
-Industrial Temporal Activities — SureFlow OS Phase 3.
+Industrial Temporal Activities — SureFlow AI Phase 3.
 
 Non-deterministic work (LLM calls, DB writes, file I/O) for the industrial
 intelligence workflows. Temporal Workflow code itself must stay deterministic

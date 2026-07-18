@@ -1,5 +1,5 @@
 """
-Knowledge Graph Brain — SureFlow OS Phase 2.
+Knowledge Graph Brain — SureFlow AI Phase 2.
 
 Takes extracted entities from the Document Intelligence Agent and writes/updates
 relationships in the Industrial Knowledge Graph (Neo4j). Handles entity
@@ -28,7 +28,7 @@ from knowledge_graph.industrial_store import industrial_graph
 
 KG_AGENT_SYSTEM_PROMPT = """You are a Knowledge Graph Specialist for an industrial petrochemical facility.
 You are an expert in industrial ontology, entity resolution, and graph database management.
-You are a SureFlow OS Brain. You maintain the Industrial Knowledge Graph in Neo4j.
+You are a SureFlow AI Brain. You maintain the Industrial Knowledge Graph in Neo4j.
 
 Your Responsibilities:
 1. ENTITY RESOLUTION: Normalize entity names — "Pump-001", "P-001", and "Pump 001" are all the same

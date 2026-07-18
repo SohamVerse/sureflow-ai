@@ -1,5 +1,5 @@
 """
-Lessons Learned Brain — SureFlow OS Phase 2.
+Lessons Learned Brain — SureFlow AI Phase 2.
 
 Powers the "learned from P-101 failure, warns about P-102" demo moment.
 Parses incidents and near-misses, extracts lessons, writes to Reflection Memory

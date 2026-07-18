@@ -1,5 +1,5 @@
 """
-Industrial Temporal Workflows — SureFlow OS Phase 3.
+Industrial Temporal Workflows — SureFlow AI Phase 3.
 
 Deterministic workflow definitions for industrial intelligence pipelines.
 Activities (non-deterministic LLM/DB work) live in industrial_activities.py.

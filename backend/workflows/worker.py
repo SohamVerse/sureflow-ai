@@ -1,5 +1,5 @@
 """
-Temporal Worker — SureFlow OS Industrial Intelligence Workflow Orchestration.
+Temporal Worker — SureFlow AI Industrial Intelligence Workflow Orchestration.
 
 Connects to the dockerized Temporal server, ensures the daily benchmark
 schedule exists (idempotent — safe to restart), and polls the task queue

@@ -1,5 +1,5 @@
 """
-IndustrialGraphStore — Industrial Knowledge Graph for SureFlow OS.
+IndustrialGraphStore — Industrial Knowledge Graph for SureFlow AI.
 
 Extends the strategic knowledge graph (graph_store.py) with an industrial
 ontology: Plant → Area → Equipment → Incidents/WorkOrders/Documents.

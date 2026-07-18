@@ -1,5 +1,5 @@
 """
-FastAPI REST API routes for SureFlow OS — shared/core endpoints.
+FastAPI REST API routes for SureFlow AI — shared/core endpoints.
 Industrial Intelligence Platform endpoints live in api/industrial_routes.py.
 """
 from typing import Optional
@@ -30,7 +30,7 @@ class ReflectionRequest(BaseModel):
 
 @router.get("/health")
 def health_check():
-    return {"status": "online", "service": "SureFlow OS", "version": "2.0.0"}
+    return {"status": "online", "service": "SureFlow AI", "version": "2.0.0"}
 
 
 @router.get("/agents/status")

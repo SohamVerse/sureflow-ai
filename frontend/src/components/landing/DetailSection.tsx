@@ -494,7 +494,7 @@ export function DetailSection() {
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24' }} />
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
               <span style={{ marginLeft: '12px', fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
-                sureflow_os::{activeTab}_terminal
+                sureflow_ai::{activeTab}_terminal
               </span>
             </div>
 

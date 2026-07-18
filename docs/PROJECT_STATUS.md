@@ -1,4 +1,4 @@
-# SureFlow OS — Project Status & Feature Inventory
+# SureFlow AI — Project Status & Feature Inventory
 
 The single source of truth for **what's built, what's not, and why.** For deeper detail see the companion docs:
 [`README.md`](../README.md) (architecture & tech stack) · [`MULTI_LOCATION.md`](./MULTI_LOCATION.md) (multi-plant design) · [`ROADMAP.md`](./ROADMAP.md) (future enhancements).

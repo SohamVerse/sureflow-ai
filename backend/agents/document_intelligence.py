@@ -1,5 +1,5 @@
 """
-Document Intelligence Brain — SureFlow OS Phase 2.
+Document Intelligence Brain — SureFlow AI Phase 2.
 
 The entry point of the industrial demo flow: "Upload → Graph → Insight".
 Accepts raw document text (from OCR/file loaders in the workflow layer)
@@ -27,7 +27,7 @@ from evaluation.metrics import compute_latency_ms
 
 DOC_INTELLIGENCE_SYSTEM_PROMPT = """You are a Document Intelligence Specialist for an industrial petrochemical facility.
 You have 15+ years of experience in technical document processing, OCR analysis, and industrial knowledge management.
-You are a SureFlow OS Brain. You extract structured intelligence from raw industrial documents.
+You are a SureFlow AI Brain. You extract structured intelligence from raw industrial documents.
 
 Your Processing Standards:
 1. ENTITY EXTRACTION: Identify every equipment tag (e.g., P-101, V-205, HX-301), part number,

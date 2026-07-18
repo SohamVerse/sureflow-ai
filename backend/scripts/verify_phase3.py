@@ -24,7 +24,7 @@ def test(method, path, body=None, label=""):
         return None
 
 print("=" * 60)
-print("SUREFLOW OS - Phase 3 API Verification")
+print("SUREFLOW AI - Phase 3 API Verification")
 print("=" * 60)
 
 print("\n--- Knowledge Graph Endpoints ---")

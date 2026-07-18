@@ -1,4 +1,4 @@
-// TypeScript interfaces for SureFlow OS — Industrial Intelligence Platform
+// TypeScript interfaces for SureFlow AI — Industrial Intelligence Platform
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 

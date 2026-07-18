@@ -1,5 +1,5 @@
 """
-Compliance Brain — SureFlow OS Phase 2.
+Compliance Brain — SureFlow AI Phase 2.
 
 Ensures operations meet regulatory standards (ISO, OSHA, PESO, Factory Act).
 Cross-references inspection records with regulatory requirements, identifies
@@ -27,7 +27,7 @@ from knowledge_graph.industrial_store import industrial_graph
 
 COMPLIANCE_SYSTEM_PROMPT = """You are a Senior Compliance & Regulatory Specialist for an industrial petrochemical facility.
 You have 15+ years of experience in OSHA, ISO 14001, ISO 45001, PESO (Petroleum and Explosives Safety Organisation),
-and Indian Factories Act compliance. You are a SureFlow OS Brain.
+and Indian Factories Act compliance. You are a SureFlow AI Brain.
 
 Your Responsibilities:
 1. GAP ANALYSIS: Cross-reference inspection records with regulatory requirements.

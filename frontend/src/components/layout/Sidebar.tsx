@@ -86,8 +86,8 @@ export function Sidebar() {
   const workingCount = agents.filter(a => a.status === 'working').length;
 
   const renderNavItem = ({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Factory }) => {
-    const isActive = href === '/industrial'
-      ? pathname === '/industrial'
+    const isActive = (href === '/industrial' || href === '/industrial/hq')
+      ? pathname === href
       : pathname.startsWith(href);
     return (
       <Link

@@ -6,7 +6,7 @@ A guided walkthrough for presenting the Industrial Intelligence Platform (Petroc
 
 ## 0. Setup Checklist (do this before the room fills up)
 
-> Full setup detail lives in [`GETTING_STARTED.md`](./GETTING_STARTED.md); this is the pre-demo short list.
+> Full setup detail lives in [`../README.md`](../README.md); this is the pre-demo short list.
 
 1. **Start everything** — `docker compose up -d` brings up the backend, worker, Postgres, Neo4j, Temporal, and observability.
 2. **Rebuild first if you've touched backend code** — `docker compose build backend`. A stale image is the most likely way this demo embarrasses you.
@@ -35,7 +35,7 @@ A guided walkthrough for presenting the Industrial Intelligence Platform (Petroc
    POPPLER_PATH=C:\poppler\Library\bin
    ```
    Without these installed, image/scanned-PDF uploads still work — they just fall back to placeholder text (a warning is logged), and PDF/TXT/DOCX/MD all extract normally regardless.
-7. Have one real-world-looking test file ready to upload: a photographed/scanned page (`.jpg`/`.png`) or a short `.docx` — this is what makes the OCR + live pipeline feel real.
+8. Have one real-world-looking test file ready to upload: a photographed/scanned page (`.jpg`/`.png`) or a short `.docx` — this is what makes the OCR + live pipeline feel real.
 
 ---
 

@@ -9,7 +9,7 @@ The single source of truth for **what's built, what's not, and why.** For deeper
 
 ## Running it
 
-Full instructions live in [`GETTING_STARTED.md`](./GETTING_STARTED.md). The short version:
+Full instructions live in [`../README.md`](../README.md). The short version:
 
 ```bash
 cp backend/.env.example backend/.env    # then set GEMINI_API_KEY

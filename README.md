@@ -1,6 +1,8 @@
 <div align="center">
 
-# ⚙️ SureFlow OS
+<img src="frontend/public/logo.png" alt="SureFlow Logo" width="120" />
+
+# SureFlow OS
 
 ### The Agentic Operating System for Heavy Industry
 
@@ -508,55 +510,9 @@ const nextConfig = { turbopack: { root: __dirname } };
 
 ## 🏗 Architecture
 
-Five layers: **Client → API → Agents → Memory → Infrastructure.**
-
-```mermaid
-graph TD
-    subgraph Client["🖥️ Frontend — Next.js 16 / React 19"]
-        LP[Landing Page /]
-        DASH[Dashboards /industrial/*]
-        STORE[Zustand + Axios/SSE]
-        LP --- DASH --- STORE
-    end
-
-    subgraph API["⚡ API — FastAPI /api/v1"]
-        AUTH[JWT Auth + resolve_scope<br/>plant isolation]
-        ROUTES[Routes: upload · copilot · maintenance<br/>compliance · lessons · graph · hq]
-        BROKER[Model Broker<br/>Gemini 2.5 Flash → Ollama fallback]
-    end
-
-    subgraph Agents["🧠 Six Specialized Brains"]
-        DOC[Doc Intelligence]
-        KG[Knowledge Graph]
-        SEARCH[Search / Copilot]
-        MAINT[Maintenance]
-        COMP[Compliance]
-        LESS[Lessons Learned]
-    end
-
-    subgraph Memory["🗄️ Memory & Knowledge"]
-        NEO[(Neo4j — Knowledge Graph<br/>Plant→Area→Equipment→Events)]
-        PG[(Postgres + pgvector<br/>embeddings · episodic memory)]
-        OLL[Ollama<br/>embeddings + fallback]
-    end
-
-    subgraph Infra["📊 Platform & Observability"]
-        TEMP[Temporal]
-        OTEL[OpenTelemetry]
-        JAEGER[Jaeger]
-        PROM[Prometheus] --> GRAF[Grafana]
-    end
-
-    STORE -->|REST + SSE| AUTH --> ROUTES --> BROKER --> Agents
-    DOC --> KG
-    Agents -->|read/write| NEO
-    Agents -->|RAG + memory| PG
-    Agents -->|embed| OLL
-    ROUTES -.-> TEMP
-    API --> OTEL --> JAEGER
-    OTEL --> PROM
-    GEM[☁️ Gemini API] --- BROKER
-```
+<div align="center">
+  <img src="frontend/public/architecture.svg" alt="SureFlow OS Architecture" width="800" />
+</div>
 
 ### Key data flows
 

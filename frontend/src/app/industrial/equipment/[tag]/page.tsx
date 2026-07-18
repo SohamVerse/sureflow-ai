@@ -74,7 +74,7 @@ export default function EquipmentDetail() {
         <div className="text-center">
           <Cpu size={48} className="mx-auto mb-4 opacity-30" style={{ color: 'var(--text-muted)' }} />
           <p style={{ color: 'var(--text-muted)' }}>Equipment &quot;{tag}&quot; not found.</p>
-          <Link href="/industrial/equipment" className="text-sm mt-2 inline-block" style={{ color: '#6366f1' }}>
+          <Link href="/industrial/equipment" className="text-sm mt-2 inline-block" style={{ color: '#a855f7' }}>
             ← Back to Equipment
           </Link>
         </div>
@@ -201,7 +201,7 @@ export default function EquipmentDetail() {
         {/* Asset Timeline */}
         <div className="industrial-card p-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <h2 className="font-semibold text-lg mb-5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Clock size={18} style={{ color: '#6366f1' }} />
+            <Clock size={18} style={{ color: '#a855f7' }} />
             Asset Timeline
           </h2>
           <div className="max-h-[500px] overflow-y-auto pr-2">
@@ -257,7 +257,7 @@ export default function EquipmentDetail() {
             {analysisResult.predictions && analysisResult.predictions.length > 0 && (
               <div className="analysis-card">
                 <div className="analysis-card-header">
-                  <Activity size={16} style={{ color: '#3b82f6' }} />
+                  <Activity size={16} style={{ color: '#a855f7' }} />
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Failure Prediction</span>
                 </div>
                 <div className="space-y-3">

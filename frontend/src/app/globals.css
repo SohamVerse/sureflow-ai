@@ -2,15 +2,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #080c14;
-  --bg-secondary: #0d1525;
-  --bg-card: #111827;
-  --bg-card-hover: #1a2438;
-  --border: rgba(255,255,255,0.07);
-  --border-active: rgba(99,102,241,0.5);
-  --accent: #6366f1;
-  --accent-glow: rgba(99,102,241,0.2);
-  --accent-2: #06b6d4;
+  color-scheme: dark;
+  --bg-primary: #04060c;
+  --bg-secondary: #0a0e18;
+  --bg-card: rgba(10, 14, 24, 0.6);
+  --bg-card-hover: rgba(15, 20, 35, 0.8);
+  --border: rgba(63, 20, 149, 0.4);
+  --border-active: rgba(168, 85, 247, 0.6);
+  --accent: #a855f7;
+  --accent-glow: rgba(168, 85, 247, 0.2);
+  --accent-2: #f97316;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -21,6 +22,11 @@
 
 * {
   box-sizing: border-box;
+}
+
+option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
 }
 
 html, body {
@@ -63,7 +69,7 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  background: linear-gradient(135deg, #a855f7, #6d28d9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -239,13 +245,13 @@ body {
 /* ── Industrial Accent Colors ─────────────────────────────────────────────────── */
 :root {
   --ind-amber: #f59e0b;
-  --ind-steel: #3b82f6;
+  --ind-steel: #a855f7;
   --ind-danger: #ef4444;
   --ind-safety: #22c55e;
   --ind-purple: #a855f7;
   --ind-orange: #f97316;
   --ind-cyan: #06b6d4;
-  --ind-bg-card: rgba(17, 24, 39, 0.6);
+  --ind-bg-card: rgba(10, 14, 24, 0.6);
 }
 
 /* ── Equipment Status Badges ──────────────────────────────────────────────────── */
@@ -259,13 +265,13 @@ body {
   background: var(--ind-bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(168, 85, 247, 0.25);
   border-radius: 16px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .industrial-card:hover {
-  border-color: rgba(59,130,246,0.3);
-  box-shadow: 0 8px 32px rgba(59,130,246,0.08);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.15);
 }
 
 /* ── Sensor Gauge ─────────────────────────────────────────────────────────────── */

@@ -24,13 +24,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-      <div className="w-full max-w-md p-8 bg-[#111] border border-[#222] rounded-2xl shadow-xl">
-        <h1 className="text-3xl font-bold mb-2 text-white">Welcome Back</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#04060c] relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '600px',
+        height: '600px',
+        background: 'radial-gradient(circle, rgba(140, 80, 220, 0.15) 0%, transparent 60%)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
+      <div 
+        className="w-full max-w-md p-8 rounded-2xl z-10 relative"
+        style={{
+          background: 'rgba(10, 14, 24, 0.6)',
+          border: '1px solid #3f1495',
+          boxShadow: '0 50px 100px -20px rgba(0, 0, 0, 0.85), 0 40px 120px rgba(140, 80, 220, 0.15), inset 0 1px 0 rgba(255,255,255,0.02)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <h1 className="text-3xl font-bold mb-2 text-white">
+          <span style={{ color: '#a855f7' }}>Welcome</span> Back
+        </h1>
         <p className="text-gray-400 mb-8">Sign in to your Sureflow account.</p>
         
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 text-sm shadow-[0_0_15px_rgba(239,68,68,0.15)]">
             {error}
           </div>
         )}
@@ -42,7 +65,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-xl text-white focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 bg-[#0a0e18]/80 border border-[#3f1495]/40 rounded-xl text-white focus:outline-none focus:border-[#a855f7] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"
               placeholder="cto@sureflow.ai"
               required
             />
@@ -53,7 +76,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-xl text-white focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 bg-[#0a0e18]/80 border border-[#3f1495]/40 rounded-xl text-white focus:outline-none focus:border-[#a855f7] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"
               placeholder="••••••••"
               required
             />
@@ -61,17 +84,26 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors"
+            className="w-full py-3 hover:opacity-90 disabled:opacity-60 text-black font-semibold rounded-full transition-all mt-4"
+            style={{
+              background: 'white',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(255,255,255,0.15)'
+            }}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Signing in…' : 'Start Now'}
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-[#222]">
-          <h3 className="text-sm font-semibold text-gray-400 mb-4">Demo Accounts:</h3>
+        <div className="mt-10 pt-8 border-t border-[#3f1495]/30">
+          <h3 className="text-sm font-semibold text-[#a855f7] mb-4">Demo Accounts:</h3>
           <div className="space-y-3">
             {DEMO_ACCOUNTS.map((acct) => (
-              <div key={acct.email} className="p-3 bg-[#1a1a1a] rounded-lg text-sm cursor-pointer hover:bg-[#222] transition-colors" onClick={() => { setEmail(acct.email); setPassword(acct.pass); }}>
+              <div 
+                key={acct.email} 
+                className="p-3 rounded-lg text-sm cursor-pointer transition-all border border-transparent hover:border-[#3f1495]/60 hover:bg-[#3f1495]/10"
+                style={{ background: 'rgba(255,255,255,0.02)' }}
+                onClick={() => { setEmail(acct.email); setPassword(acct.pass); }}
+              >
                 <div className="font-medium text-white">{acct.label}</div>
                 <div className="text-gray-400 font-mono text-xs mt-1">
                   {acct.email} / {acct.pass}

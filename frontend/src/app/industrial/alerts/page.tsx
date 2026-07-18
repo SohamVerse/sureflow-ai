@@ -11,7 +11,7 @@ interface Alert {
   title: string; message: string; equipment_tag: string | null; status: string; created_at: string | null;
 }
 
-const SEV_COLOR: Record<string, string> = { critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#22c55e' };
+const SEV_COLOR: Record<string, string> = { critical: '#ef4444', high: '#f59e0b', medium: '#a855f7', low: '#22c55e' };
 const CAT_ICON: Record<string, typeof AlertTriangle> = { incident: AlertTriangle, inspection: ClipboardCheck, compliance: ShieldAlert, maintenance: Wrench };
 
 export default function AlertsPage() {
@@ -77,7 +77,7 @@ export default function AlertsPage() {
             <ol className="space-y-1.5">
               {digest.priorities.slice(0, 5).map((p: any) => (
                 <li key={p.rank} className="flex items-start gap-2 text-xs">
-                  <span className="font-bold" style={{ color: p.severity === 'critical' ? '#ef4444' : p.severity === 'high' ? '#f59e0b' : '#3b82f6' }}>{p.rank}.</span>
+                  <span className="font-bold" style={{ color: p.severity === 'critical' ? '#ef4444' : p.severity === 'high' ? '#f59e0b' : '#a855f7' }}>{p.rank}.</span>
                   <span style={{ color: 'var(--text-primary)' }}>{p.title}</span>
                   <span style={{ color: 'var(--text-muted)' }}>— {p.recommended_action}</span>
                 </li>
@@ -111,7 +111,7 @@ export default function AlertsPage() {
         <div className="space-y-3">
           {alerts.map(a => {
             const Icon = CAT_ICON[a.category] || AlertTriangle;
-            const color = SEV_COLOR[a.severity] || '#3b82f6';
+            const color = SEV_COLOR[a.severity] || '#a855f7';
             const resolved = a.status === 'resolved';
             return (
               <div key={a.id} className="industrial-card p-5 flex items-start gap-4" style={{ opacity: resolved ? 0.55 : 1, borderColor: `${color}33` }}>

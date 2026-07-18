@@ -34,7 +34,7 @@ function SearchResults() {
         <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}><Loader2 size={16} className="animate-spin" /> Searching…</div>
       ) : res ? (
         <div className="space-y-6">
-          <Group title="Equipment" icon={Cpu} color="#3b82f6" count={res.equipment.length}>
+          <Group title="Equipment" icon={Cpu} color="#a855f7" count={res.equipment.length}>
             {res.equipment.map((e: any) => (
               <Row key={e.tag} title={`${e.tag} — ${e.name}`} sub={e.area || e.asset_class} />
             ))}

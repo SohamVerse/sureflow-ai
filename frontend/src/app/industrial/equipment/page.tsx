@@ -1,12 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { systemApi } from '@/lib/api';
 import { EquipmentCard } from '@/components/industrial/EquipmentCard';
 import { Search, LayoutGrid, List, Cpu, Filter, Download } from 'lucide-react';
 
 export default function EquipmentDashboard() {
   const { industrialEquipment, loadingIndustrial, fetchIndustrialEquipment } = useSureflowStore();
+  const { targetPlantId } = useAuth();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterArea, setFilterArea] = useState('');
@@ -14,7 +16,7 @@ export default function EquipmentDashboard() {
 
   useEffect(() => {
     fetchIndustrialEquipment();
-  }, [fetchIndustrialEquipment]);
+  }, [fetchIndustrialEquipment, targetPlantId]);
 
   // Derive unique areas
   const areas = [...new Set(industrialEquipment.map(e => e.area))].sort();
@@ -35,7 +37,7 @@ export default function EquipmentDashboard() {
       {/* Header */}
       <div className="mb-8 animate-fade-in-up">
         <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          <Cpu size={28} className="inline mr-2" style={{ color: '#3b82f6' }} />
+          <Cpu size={28} className="inline mr-2" style={{ color: '#a855f7' }} />
           Equipment<span className="gradient-text"> Dashboard</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>

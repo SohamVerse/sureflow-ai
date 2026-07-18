@@ -26,7 +26,7 @@ interface Overview {
 }
 
 const TOTAL_TILES: Array<{ key: string; label: string; icon: typeof Cpu; color: string }> = [
-  { key: 'equipment', label: 'Total Equipment', icon: Cpu, color: '#3b82f6' },
+  { key: 'equipment', label: 'Total Equipment', icon: Cpu, color: '#a855f7' },
   { key: 'incidents', label: 'Open Incidents', icon: AlertTriangle, color: '#ef4444' },
   { key: 'work_orders', label: 'Work Orders', icon: Wrench, color: '#f59e0b' },
   { key: 'inspections', label: 'Inspections', icon: ClipboardCheck, color: '#22c55e' },
@@ -81,7 +81,7 @@ export default function HQOverviewPage() {
     <div className="p-8 min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <div className="mb-8 animate-fade-in-up">
         <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          <Globe size={28} className="inline mr-2" style={{ color: '#6366f1' }} />
+          <Globe size={28} className="inline mr-2" style={{ color: '#a855f7' }} />
           Headquarters<span className="gradient-text"> Overview</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
@@ -112,7 +112,7 @@ export default function HQOverviewPage() {
 
           {/* Per-plant cards */}
           <h2 className="font-semibold text-lg mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Building2 size={18} style={{ color: '#06b6d4' }} /> Plants
+            <Building2 size={18} style={{ color: '#a855f7' }} /> Plants
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.plants.map((p, i) => {

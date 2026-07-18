@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { industrialApi } from '@/lib/api';
 import type { MaintenanceResult } from '@/types';
 import { AgentReasoningPanel } from '@/components/industrial/AgentReasoningPanel';
@@ -12,6 +13,7 @@ import {
 
 export default function MaintenanceDashboard() {
   const { industrialEquipment, fetchIndustrialEquipment } = useSureflowStore();
+  const { targetPlantId } = useAuth();
   const [selectedTag, setSelectedTag] = useState('');
   const [analysisType, setAnalysisType] = useState('full');
   const [incidentContext, setIncidentContext] = useState('');
@@ -22,7 +24,7 @@ export default function MaintenanceDashboard() {
 
   useEffect(() => {
     fetchIndustrialEquipment();
-  }, [fetchIndustrialEquipment]);
+  }, [fetchIndustrialEquipment, targetPlantId]);
 
   // Closed-loop: turn an AI recommendation into a tracked work order.
   const createWorkOrder = async (rec: { action: string; justification?: string; priority?: string; equipment_tag?: string }, i: number) => {
@@ -73,7 +75,7 @@ export default function MaintenanceDashboard() {
       {/* Analysis Form */}
       <div className="industrial-card p-6 mb-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <h2 className="font-semibold text-lg mb-5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Play size={18} style={{ color: '#6366f1' }} />
+          <Play size={18} style={{ color: '#a855f7' }} />
           Run Analysis
         </h2>
 
@@ -225,7 +227,7 @@ export default function MaintenanceDashboard() {
               {result.predictions && result.predictions.length > 0 && (
                 <div className="analysis-card">
                   <div className="analysis-card-header">
-                    <Activity size={16} style={{ color: '#3b82f6' }} />
+                    <Activity size={16} style={{ color: '#a855f7' }} />
                     <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Failure Predictions</span>
                   </div>
                   <div className="space-y-4">
@@ -270,9 +272,9 @@ export default function MaintenanceDashboard() {
             {result.similar_asset_analysis?.mtbf_estimate_hours && (
               <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3 mb-2">
-                  <Cpu size={16} style={{ color: '#3b82f6' }} />
+                  <Cpu size={16} style={{ color: '#a855f7' }} />
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Estimated Mean Time Between Failures:</span>
-                  <span className="text-lg font-bold" style={{ color: '#3b82f6' }}>
+                  <span className="text-lg font-bold" style={{ color: '#a855f7' }}>
                     {result.similar_asset_analysis.mtbf_estimate_hours.toLocaleString()} hours
                   </span>
                 </div>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { CopilotChat } from '@/components/industrial/CopilotChat';
 import { Send, Sparkles, Trash2, MessageSquare } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const SUGGESTED_PROMPTS = [
 
 export default function CopilotPage() {
   const { copilotMessages, copilotLoading, copilotStage, sendCopilotMessage, clearCopilotMessages } = useSureflowStore();
+  const { targetPlantId } = useAuth();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -22,6 +24,11 @@ export default function CopilotPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [copilotMessages, copilotLoading]);
+
+  // Clear context when switching plants so the Copilot doesn't mix state.
+  useEffect(() => {
+    clearCopilotMessages();
+  }, [targetPlantId, clearCopilotMessages]);
 
   const handleSend = () => {
     if (!input.trim() || copilotLoading) return;

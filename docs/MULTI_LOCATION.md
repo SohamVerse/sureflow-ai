@@ -2,7 +2,7 @@
 
 Design & scope document for extending SureFlow OS from a single-plant tool into a **multi-location enterprise platform**: many plants, each with isolated logins and data, plus a global **HQ / CTO** view that spans, compares, and provisions all of them.
 
-> Read the base platform first: [`README.md`](./README.md).
+> Read the base platform first: [`README.md`](../README.md).
 
 ---
 
@@ -163,7 +163,7 @@ Stamp `plant_id` on all Neo4j writes + memory tables · thread `plant_id` throug
 **Phase 5 — Cross-plant intelligence** ✅ **DONE**
 Global HQ Copilot over all plants (`hqApi.copilot`, forced global scope) · reliability benchmarking & ranking (`/hq/benchmark`) · cross-plant reasoning verified. *(Deeper automated pattern-mining remains a future enhancement.)*
 
-> **Status: Phases 1–5 implemented & verified end-to-end** against NeonDB + Neo4j with two plants (Karnataka / Delhi) and three users (CTO + 2 managers). Demo logins: `cto@sureflow.ai / admin123`, `karnataka@sureflow.ai / plant123`, `delhi@sureflow.ai / plant123`.
+> **Status: Phases 1–5 implemented & verified end-to-end** against NeonDB + Neo4j with two plants (Karnataka / Delhi) and three users (CTO + 2 managers). Demo logins: `cto@sureflow.ai / Sureflow_CTO_2026!`, `karnataka@sureflow.ai / Sureflow_Plant_2026!`, `delhi@sureflow.ai / Sureflow_Plant_2026!`.
 
 ---
 

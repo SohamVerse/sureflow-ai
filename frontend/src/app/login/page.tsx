@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth, DEMO_ACCOUNTS } from '@/lib/AuthContext';
 
 export default function LoginPage() {
-  const { login, user } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  // Wait for the stored session to be restored before bouncing to /industrial,
+  // and key off the same `user` the route guard uses so the two can't disagree.
   useEffect(() => {
-    if (user) {
-      router.push('/industrial');
+    if (!authLoading && user) {
+      router.replace('/industrial');
     }
-  }, [user, router]);
+  }, [authLoading, user, router]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

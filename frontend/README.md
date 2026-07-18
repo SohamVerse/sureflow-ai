@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SureFlow OS — Frontend
 
-## Getting Started
+The Next.js 16 web application for [SureFlow OS](../README.md). Runs on the host (it is deliberately
+not part of `docker-compose.yml`) and talks to the FastAPI backend on port 8000.
 
-First, run the development server:
+---
+
+## Running it
+
+The backend must be up first — see the [root README](../README.md#-quick-start).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | Does |
+|---|---|
+| `npm run dev` | Dev server with hot reload (Turbopack) |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | Typecheck |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+No `.env` is required. `src/lib/api.ts` defaults to `http://localhost:8000/api/v1`, which matches the
+backend's default port. To point somewhere else, create `.env.local`:
 
-## Learn More
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/
+│   ├── page.tsx           # public landing page
+│   ├── login/             # authentication
+│   └── industrial/        # the application — overview, equipment, copilot,
+│                          # maintenance, compliance, lessons, alerts,
+│                          # work orders, trends, search, HQ
+├── components/
+│   ├── landing/           # marketing page sections
+│   ├── industrial/        # dashboard widgets
+│   └── layout/            # Sidebar, shell
+├── lib/
+│   ├── api.ts             # Axios client, SSE streaming, auth interceptor
+│   ├── AuthContext.tsx    # session state + route guards
+│   └── store.ts           # Zustand store
+└── types/
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notes
 
-## Deploy on Vercel
+**Auth.** `AuthContext` holds the session in `localStorage` under `sureflow_token` and
+`sureflow_user`. Both must be present for a session to count as valid — a half-written session is
+cleared automatically, which is what prevents a redirect loop between `/login` and `/industrial`.
+A `401` from the API clears the whole session and returns you to login.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Streaming.** Copilot responses and document-upload progress arrive over SSE via raw `fetch`, not
+Axios — so the Axios interceptors don't apply and those calls attach their bearer token explicitly.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Next.js version.** This is Next 16 with the App Router; APIs and conventions differ from older
+versions. Consult the bundled docs in `node_modules/next/dist/docs/` rather than assuming.

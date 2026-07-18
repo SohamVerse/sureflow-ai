@@ -12,6 +12,9 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  /** True until the stored session has been read from localStorage. Guards must
+   *  wait for this, otherwise they act on a not-yet-restored (null) user. */
+  loading: boolean;
   targetPlantId: string | null;
   setTargetPlantId: (plantId: string | null) => void;
   login: (email: string, pass: string) => Promise<boolean>;
@@ -27,17 +30,39 @@ export const DEMO_ACCOUNTS: Array<{ email: string; pass: string; label: string }
   { email: 'karnataka@sureflow.ai', pass: 'Sureflow_Plant_2026!', label: 'Karnataka Manager (PLANT-001)' },
 ];
 
+// Wipes every key that makes up a session. Used whenever the stored session is
+// incomplete or rejected, so we never leave half of it behind.
+function clearStoredSession() {
+  localStorage.removeItem('sureflow_token');
+  localStorage.removeItem('sureflow_user');
+  localStorage.removeItem('sureflow_target_plant');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [targetPlantId, setTargetPlantIdState] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     const stored = localStorage.getItem('sureflow_user');
-    if (stored) setUser(JSON.parse(stored));
+    const token = localStorage.getItem('sureflow_token');
+    // A session is only valid when BOTH the user and the token are present.
+    // A half-written session used to bounce the browser between /login and
+    // /industrial forever, because each route's guard read a different key.
+    if (stored && token) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {
+        clearStoredSession();
+      }
+    } else if (stored || token) {
+      clearStoredSession();
+    }
     const storedTarget = localStorage.getItem('sureflow_target_plant');
     if (storedTarget) setTargetPlantIdState(storedTarget);
+    setLoading(false);
   }, []);
 
   const setTargetPlantId = (plantId: string | null) => {
@@ -66,22 +91,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    setTargetPlantId(null);
-    localStorage.removeItem('sureflow_token');
-    localStorage.removeItem('sureflow_user');
-    localStorage.removeItem('sureflow_target_plant');
-    router.push('/login');
+    setTargetPlantIdState(null);
+    clearStoredSession();
+    router.replace('/login');
   };
 
-  // Protect industrial routes — no token means redirect to login.
+  // Protect industrial routes. This reads the same `user` state that the login
+  // page redirects on, so the two guards can never disagree and ping-pong.
+  // `replace` keeps the bounce out of history, so Back still works.
   useEffect(() => {
-    if (pathname && pathname.startsWith('/industrial') && !localStorage.getItem('sureflow_token')) {
-      router.push('/login');
+    if (loading) return;
+    if (pathname && pathname.startsWith('/industrial') && !user) {
+      router.replace('/login');
     }
-  }, [pathname, router]);
+  }, [loading, user, pathname, router]);
 
   return (
-    <AuthContext.Provider value={{ user, targetPlantId, setTargetPlantId, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, targetPlantId, setTargetPlantId, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

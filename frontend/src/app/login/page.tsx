@@ -1,10 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth, DEMO_ACCOUNTS } from '@/lib/AuthContext';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/industrial');
+    }
+  }, [user, router]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

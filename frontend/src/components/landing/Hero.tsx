@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
 import { Zap } from 'lucide-react';
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -99,6 +100,14 @@ function ProtocolIcon6() {
    ──────────────────────────────────────────────────────────────────────────── */
 export function HeroSection() {
   const router = useRouter();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (user) {
+      router.push('/industrial');
+    }
+  }, [user, router]);
+
   const words = ["Clarity", "Confidence", "Control", "Velocity"];
   const [wordIndex, setWordIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");

@@ -25,20 +25,15 @@ natural-language Copilot.
 
 ---
 
-## 📑 Table of Contents
+## 📑 Contents
 
-| Section | |
-|---|---|
-| [The Problem](#-the-problem) | Why plants lose money on paper |
-| [What SureFlow Does](#-what-sureflow-does) | The product in one screen |
-| [Quick Start](#-quick-start) | **Running in ~5 minutes** |
-| [Demo Logins](#-demo-logins) | Credentials that actually work |
-| [Features](#-features) | The full inventory |
-| [Architecture](#-architecture) | How the pieces fit |
-| [The Six AI Brains](#-the-six-ai-brains) | The agent layer |
-| [Tech Stack](#-tech-stack) | What it's built on |
-| [Project Structure](#-project-structure) | Where things live |
-| [Documentation](#-documentation) | The rest of the docs |
+**[The Problem](#-the-problem)** · **[What It Does](#-what-it-does)** ·
+**[⚡ Quick Start](#-quick-start)** · **[Demo Logins](#-demo-logins)** ·
+**[Service Map](#-service-map)** · **[Running Locally (no Docker)](#-running-the-backend-without-docker)** ·
+**[🔧 Troubleshooting](#-troubleshooting)** · **[Features](#-features)** ·
+**[Architecture](#-architecture)** · **[The Six AI Brains](#-the-six-ai-brains)** ·
+**[Tech Stack](#-tech-stack)** · **[Project Structure](#-project-structure)** ·
+**[More Docs](#-more-documentation)**
 
 ---
 
@@ -52,14 +47,14 @@ incident report from a sister plant that hit the same failure last year. Nobody 
 
 **The result:** repeat failures, missed compliance gaps, and lessons that are never actually learned.
 
-## 💡 What SureFlow Does
+## 💡 What It Does
 
 SureFlow ingests those documents and builds two complementary memories:
 
-- a **Knowledge Graph** (Neo4j) — the plant's structure: `Plant → Area → Equipment → Incidents`
-- a **semantic vector store** (pgvector) — the plant's meaning: what the documents actually say
+- a **Knowledge Graph** (Neo4j) — the plant's *structure*: `Plant → Area → Equipment → Incidents`
+- a **semantic vector store** (pgvector) — the plant's *meaning*: what the documents actually say
 
-Six specialized agents reason across **both** at once. Ask *"why does P-101 keep cavitating?"* and the
+Six specialized agents reason across **both at once**. Ask *"why does P-101 keep cavitating?"* and the
 Copilot walks the graph for that pump's real failure history **and** semantically searches every
 manual — then answers with **citations** back to the source document.
 
@@ -68,16 +63,16 @@ manual — then answers with **citations** back to the source document.
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
 ### Prerequisites
 
-| Requirement | Notes |
-|---|---|
-| **Docker Desktop** | Runs the whole backend + all infrastructure |
-| **Node.js 20+** | For the frontend |
-| **Gemini API key** | Free tier is plenty — [get one here](https://aistudio.google.com/apikey) |
-| **Ollama** *(optional)* | Local embeddings + offline fallback — `ollama pull nomic-embed-text` |
+| Requirement | Why | Notes |
+|---|---|---|
+| **Docker Desktop** | Runs the backend + all infrastructure | Required |
+| **Node.js 20+** | The frontend | Always runs on the host |
+| **Gemini API key** | Powers all six agents | Free tier is plenty — [get one](https://aistudio.google.com/apikey) |
+| **Ollama** *(optional)* | Embeddings + offline fallback | Improves semantic search |
 
 ### 1️⃣ Configure
 
@@ -88,7 +83,8 @@ cd sureflow-ai
 cp backend/.env.example backend/.env
 ```
 
-Open `backend/.env` and set your key — this is the **only** value you must provide:
+Open `backend/.env` and set your key. **This is the only value you must provide** — everything else
+has a working default:
 
 ```env
 GEMINI_API_KEY=your-key-here
@@ -100,10 +96,10 @@ GEMINI_API_KEY=your-key-here
 docker compose up -d
 ```
 
-This brings up **all nine services**: the FastAPI backend, the Temporal worker, Postgres + pgvector,
+This brings up **nine services**: the FastAPI backend, the Temporal worker, Postgres + pgvector,
 Neo4j, Temporal, Jaeger, Prometheus, and Grafana.
 
-Confirm it's healthy:
+Verify it's healthy:
 
 ```bash
 docker compose ps
@@ -113,12 +109,12 @@ curl http://localhost:8000/api/v1/health
 
 ### 3️⃣ Seed the demo data
 
-Two plants, twelve pieces of equipment, three users, and KPI history:
+Without this the app runs but every dashboard is empty. All three scripts are idempotent:
 
 ```bash
-docker compose exec backend python scripts/seed_industrial_data.py
-docker compose exec backend python scripts/seed_users.py
-docker compose exec backend python scripts/seed_kpi_snapshots.py
+docker compose exec backend python scripts/seed_industrial_data.py   # 2 plants, 12 equipment
+docker compose exec backend python scripts/seed_users.py             # 3 demo users
+docker compose exec backend python scripts/seed_kpi_snapshots.py     # KPI history for Trends
 ```
 
 ### 4️⃣ Start the frontend
@@ -129,13 +125,21 @@ npm install
 npm run dev
 ```
 
+No frontend `.env` is needed — it defaults to `http://localhost:8000/api/v1`.
+
 ### 5️⃣ Open it
 
-**→ [http://localhost:3000](http://localhost:3000)** and sign in with a demo account below.
+**→ [http://localhost:3000](http://localhost:3000)**, then sign in below.
 
-> 💡 Prefer running the backend outside Docker with hot-reload? See
-> **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
-> Something broken? See **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)**.
+### Optional: Ollama
+
+Provides the embedding model for semantic search plus a local fallback when Gemini errors or hits
+quota. The app runs without it, but retrieval quality drops.
+
+```bash
+ollama pull nomic-embed-text    # 768-dim embeddings
+ollama pull llama3.2            # offline fallback LLM
+```
 
 ---
 
@@ -147,11 +151,13 @@ npm run dev
 | 🏭 **Karnataka Manager** | `karnataka@sureflow.ai` | `Sureflow_Plant_2026!` | `PLANT-001` only |
 | 🏭 **Delhi Manager** | `delhi@sureflow.ai` | `Sureflow_Plant_2026!` | `PLANT-002` only |
 
-Scope is derived server-side from the verified JWT — never from a client field. Signing in as a plant
-manager and requesting another plant's data returns **403**.
+Scope is derived server-side from the verified JWT — never from a client field. A plant manager
+requesting another plant's data gets **403**. Tokens last 24 hours.
 
-**Try this to see it:** log in as Karnataka, note the equipment list. Log in as the CTO and use the
-**plant switcher** in the sidebar — same data, plus a cross-plant benchmark view a manager can't reach.
+> Source of truth is `backend/scripts/seed_users.py`. If a login ever fails, check there first.
+
+**Try this:** log in as Karnataka and note the equipment list. Then log in as the CTO and use the
+**plant switcher** in the sidebar — same data, plus a cross-plant benchmark a manager can't reach.
 
 ---
 
@@ -160,13 +166,311 @@ manager and requesting another plant's data returns **403**.
 | Service | URL | Purpose |
 |---|---|---|
 | **Frontend** | [localhost:3000](http://localhost:3000) | The app |
-| **API docs** | [localhost:8000/docs](http://localhost:8000/docs) | Interactive OpenAPI — 55 routes |
-| **Health** | [localhost:8000/api/v1/health](http://localhost:8000/api/v1/health) | Liveness |
-| **Neo4j Browser** | [localhost:7474](http://localhost:7474) | Inspect the graph (`neo4j` / `sureflow_password`) |
+| **API docs** | [localhost:8000/docs](http://localhost:8000/docs) | Interactive OpenAPI — ~55 routes |
+| **Health** | [localhost:8000/api/v1/health](http://localhost:8000/api/v1/health) | Liveness check |
+| **Neo4j Browser** | [localhost:7474](http://localhost:7474) | Inspect the graph — `neo4j` / `sureflow_password` |
 | **Temporal UI** | [localhost:8085](http://localhost:8085) | Durable workflows |
 | **Jaeger** | [localhost:16686](http://localhost:16686) | Distributed traces |
 | **Grafana** | [localhost:3001](http://localhost:3001) | Metrics dashboards |
 | **Prometheus** | [localhost:9090](http://localhost:9090) | Raw metrics |
+
+### Common commands
+
+```bash
+docker compose up -d                    # start everything
+docker compose down                     # stop (data volumes survive)
+docker compose down -v                  # stop AND wipe all data
+docker compose up -d --build            # rebuild after backend code changes
+docker compose ps                       # status
+docker compose logs -f backend          # follow backend logs
+docker compose exec backend bash        # shell into the backend
+
+cd frontend && npm run dev              # dev server
+cd frontend && npx tsc --noEmit         # typecheck
+```
+
+---
+
+## 💻 Running the backend without Docker
+
+Useful when actively editing backend code and you want hot-reload.
+
+**1. Stop the containerized backend** — otherwise both fight over port 8000:
+
+```bash
+docker compose stop backend temporal-worker
+docker compose up -d db neo4j temporal jaeger prometheus grafana
+```
+
+**2. Point `.env` at localhost.** Compose injects Docker-internal hostnames; on the host you need the
+published ports instead:
+
+```env
+NEO4J_URI=bolt://localhost:7687
+OLLAMA_BASE_URL=http://localhost:11434
+DATABASE_URL=postgresql://sureflow_user:sureflow_password@localhost:5433/sureflow_db
+```
+
+**3. Install and run:**
+
+```bash
+cd backend
+python -m venv .venv
+
+# Windows
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m uvicorn main:app --reload --port 8000
+
+# macOS / Linux
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m uvicorn main:app --reload --port 8000
+```
+
+**4. Windows only — OCR binaries.** Document upload needs Tesseract and Poppler. They're baked into
+the Docker image but not present on Windows. Install
+[Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and
+[Poppler](https://github.com/oschwartz10612/poppler-windows/releases), then set in `.env`:
+
+```env
+TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+POPPLER_PATH=C:\poppler\Library\bin
+```
+
+---
+
+## 🔧 Troubleshooting
+
+<details>
+<summary><b>🐳 Docker build fails: <code>invalid file request Dockerfile</code></b></summary>
+
+<br/>
+
+```
+#2 transferring dockerfile: 31B
+#2 ERROR: invalid file request Dockerfile
+```
+
+The giveaway is the byte count — `31B` when the real Dockerfile is ~640B. Docker isn't reading your
+file at all.
+
+**Cause:** the project sits in a **OneDrive**-synced folder. OneDrive Files On-Demand turns files
+into dehydrated placeholders carrying the `ReparsePoint` attribute, and Docker BuildKit refuses to
+read any file with a reparse point.
+
+**Confirm it:**
+```powershell
+Get-Item .\backend\Dockerfile | Select-Object Name, Length, Attributes
+# ReparsePoint in the output → this is your problem
+```
+
+**What does NOT work:** `attrib +P` ("Always keep on this device") hydrates the content but leaves
+the reparse point tag in place. The build fails identically. This is the advice you'll find
+everywhere and it does not fix this.
+
+**The fix** — rewrite each affected file as a genuine local file:
+
+```powershell
+$root = "path\to\sureflow-ai"
+$venv = [System.IO.Path]::Combine($root, "backend", ".venv")
+
+$targets = @()
+$targets += Get-ChildItem $root -File -Force -ErrorAction SilentlyContinue
+$targets += Get-ChildItem ([System.IO.Path]::Combine($root,"backend")) -Recurse -File -Force `
+            -ErrorAction SilentlyContinue |
+            Where-Object { -not $_.FullName.StartsWith($venv, 'OrdinalIgnoreCase') }
+$targets = $targets | Where-Object { ([int]$_.Attributes -band 0x400) -ne 0 }
+
+foreach ($f in $targets) {
+  $src = $f.FullName; $tmp = "$src.hyd"
+  $bytes = [System.IO.File]::ReadAllBytes($src)
+  [System.IO.File]::WriteAllBytes($tmp, $bytes)
+  [System.IO.File]::Delete($src)
+  [System.IO.File]::Move($tmp, $src)
+}
+```
+
+Attributes should drop to `32` (Archive only), and the build succeeds.
+
+⚠️ **This recurs** — OneDrive re-dehydrates files within hours. Worse, a re-dehydrated file can leave
+your **built image holding stale code** while the host source is current. If a container behaves
+oddly, diff its copy against the host and rebuild:
+
+```bash
+docker compose exec -T backend grep -n "something" scripts/seed_users.py
+docker compose build backend
+```
+
+**The durable fix is moving the repository outside OneDrive.**
+
+</details>
+
+<details>
+<summary><b>🔌 Port already in use</b></summary>
+
+<br/>
+
+```powershell
+netstat -ano | findstr :8000        # Windows
+lsof -i :8000                       # macOS / Linux
+```
+
+| Port | Service | Frequent conflict |
+|---|---|---|
+| 3000 | Frontend | Another Next.js/React app |
+| 8000 | Backend | **A local backend and the Docker backend both running** |
+| 5433 | Postgres | Deliberately not 5432, to dodge a local Postgres |
+| 7474 / 7687 | Neo4j | A local Neo4j install |
+| 3001 | Grafana | Mapped off 3000 because the frontend owns it |
+
+By far the most common case is running Docker *and* local backend at once. Pick one:
+
+```bash
+docker compose stop backend temporal-worker   # then run uvicorn locally
+```
+
+</details>
+
+<details>
+<summary><b>🔑 Login returns 401</b></summary>
+
+<br/>
+
+**Check the password first.** Older drafts of these docs circulated `admin123` / `plant123` — those
+are stale and return 401. The working credentials are in [Demo Logins](#-demo-logins) above, with
+`backend/scripts/seed_users.py` as the source of truth.
+
+**If the password is right,** the users aren't seeded:
+
+```bash
+docker compose exec backend python scripts/seed_users.py
+```
+
+**If you were logged in and suddenly get 401s,** your JWT expired — tokens last 24 hours. Log in again.
+
+</details>
+
+<details>
+<summary><b>🔁 Browser flickers between /login and /industrial</b></summary>
+
+<br/>
+
+A redirect loop from a desynced session: `sureflow_user` present in `localStorage` but
+`sureflow_token` missing, so each route's guard bounces to the other.
+
+**Fix:** hard-refresh (`Ctrl+Shift+R`). The auth layer treats a session as valid only when *both*
+keys exist and clears a half-session automatically, so it self-heals to the login page.
+
+If it somehow persists, clear it manually in DevTools → Console:
+
+```js
+localStorage.removeItem('sureflow_token');
+localStorage.removeItem('sureflow_user');
+localStorage.removeItem('sureflow_target_plant');
+location.href = '/login';
+```
+
+</details>
+
+<details>
+<summary><b>📭 Dashboards are empty</b></summary>
+
+<br/>
+
+Almost always missing seed data — run all three [seed scripts](#3️⃣-seed-the-demo-data).
+
+Verify the graph actually has nodes at [localhost:7474](http://localhost:7474):
+
+```cypher
+MATCH (e:Equipment) RETURN count(e)
+```
+
+If that returns `0`, `seed_industrial_data.py` didn't complete — check its output for errors.
+
+**If data exists but one plant looks empty,** that's the isolation model working correctly: a plant
+manager only ever sees their own plant. Log in as the CTO to see everything.
+
+</details>
+
+<details>
+<summary><b>🤖 Agents fail or return nothing</b></summary>
+
+<br/>
+
+**1. Is the API key set?** The most common cause by far.
+
+```bash
+docker compose exec backend printenv | grep GEMINI
+```
+
+Empty means `backend/.env` is missing or lacks the key. Editing `.env` requires a restart:
+`docker compose restart backend`.
+
+**2. Quota exhausted.** A `429` in the logs means you've hit the free-tier daily limit. The Model
+Broker falls back to local Ollama automatically — but only if Ollama is running (`ollama list`).
+
+**3. Malformed JSON from the LLM** is already handled — `core/json_utils.py` uses `json-repair` to
+recover broken model output.
+
+**4. Watch it happen:** `docker compose logs -f backend`
+
+</details>
+
+<details>
+<summary><b>🕸 Neo4j connection refused</b></summary>
+
+<br/>
+
+**Wrong hostname for your setup.** Inside Docker the host is `neo4j`; from your machine it's
+`localhost`:
+
+```env
+NEO4J_URI=bolt://neo4j:7687        # backend running in Docker
+NEO4J_URI=bolt://localhost:7687    # backend running on the host
+```
+
+Compose sets the Docker value automatically — you only change this when running locally.
+
+**Neo4j is slow to start** — it accepts Bolt connections several seconds after the container reports
+as running. Check with `docker compose logs neo4j | grep -i started`.
+
+**Credentials** (`neo4j` / `sureflow_password`) come from `NEO4J_AUTH` in compose. Changing that
+after the volume exists has no effect without `docker compose down -v`, which erases all data.
+
+</details>
+
+<details>
+<summary><b>📄 Document upload fails</b></summary>
+
+<br/>
+
+**In Docker** the OCR toolchain is preinstalled, so check the logs for the real exception.
+
+**Running locally on Windows** you need Tesseract and Poppler — see
+[Running without Docker](#-running-the-backend-without-docker).
+
+**Scanned PDFs with no text layer** fall back to OCR, which is slow. The endpoint streams SSE
+progress, so the UI shows which stage it's on — give it time before assuming it hung.
+
+</details>
+
+<details>
+<summary><b>⚠️ Next.js picks the wrong workspace root</b></summary>
+
+<br/>
+
+```
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+```
+
+Multiple `package-lock.json` files exist and Next picked one outside the project. Harmless, but it
+can cause odd module resolution. Delete the stray lockfiles (keep `frontend/package-lock.json`), or
+pin the root in `next.config.ts`:
+
+```ts
+const nextConfig = { turbopack: { root: __dirname } };
+```
+
+</details>
 
 ---
 
@@ -176,11 +480,11 @@ manager and requesting another plant's data returns **403**.
 
 | | Feature | What it does |
 |---|---|---|
-| 🏠 | **Landing + Plant Overview** | Public marketing page at `/`; the app lives at `/industrial` with live KPIs, the `Plant → Area → Equipment` tree, and recent incidents. |
-| 💬 | **Industrial Copilot** | Conversational assistant doing **hybrid search** — graph traversal *plus* vector semantic search — synthesizing answers **with citations**. |
-| 🔧 | **Equipment Dashboard** | Browse, search, and filter every asset; per-asset detail with an event **timeline** and live IoT sensor gauges. |
-| 🛠️ | **Maintenance Intelligence** | Root Cause Analysis (5-Why), cross-asset failure **prediction** (MTBF), and prioritized preventive recommendations. |
-| 📋 | **Compliance** | Regulatory **gap analysis**, SOP checks, and audit-readiness scoring (OSHA / ISO / Factory Act). |
+| 🏠 | **Landing + Plant Overview** | Public page at `/`; the app at `/industrial` with live KPIs, the `Plant → Area → Equipment` tree, and recent incidents. |
+| 💬 | **Industrial Copilot** | Conversational assistant doing **hybrid search** — graph traversal *plus* vector semantic search — answering **with citations**. |
+| 🔧 | **Equipment Dashboard** | Browse, search, and filter every asset; per-asset detail with an event **timeline** and live sensor gauges. |
+| 🛠️ | **Maintenance Intelligence** | Root Cause Analysis (5-Why), cross-asset failure **prediction** (MTBF), prioritized preventive recommendations. |
+| 📋 | **Compliance** | Regulatory **gap analysis**, SOP checks, audit-readiness scoring (OSHA / ISO / Factory Act). |
 | 🎓 | **Lessons Learned** | Extracts lessons from incidents, raises **cross-asset warnings**, detects recurring failure patterns. |
 | 📤 | **Document Ingestion** | PDF/DOCX/image/text → OCR → entity extraction → embedded into pgvector **and** synced into the graph, with **live SSE progress**. |
 
@@ -189,15 +493,15 @@ manager and requesting another plant's data returns **403**.
 | | Feature | What it does |
 |---|---|---|
 | 🔐 | **Auth + RBAC** | JWT login, bcrypt hashing, three roles, complete plant-level data isolation. |
-| 🏢 | **HQ layer** *(CTO)* | Cross-plant roll-up, side-by-side comparison, reliability benchmarking, and a **global Copilot** spanning all plants. |
-| 🔔 | **Alerts & Digest** | Deterministic alerts from graph signals, a sidebar bell badge, and a prioritized "morning briefing" risk digest. |
-| ⚙️ | **Closed-loop Work Orders** | Create a work order straight from a Maintenance recommendation, then track `open → in_progress → completed`. |
+| 🏢 | **HQ layer** *(CTO)* | Cross-plant roll-up, side-by-side comparison, reliability benchmarking, and a **global Copilot**. |
+| 🔔 | **Alerts & Digest** | Deterministic alerts from graph signals, sidebar bell badge, and a prioritized "morning briefing". |
+| ⚙️ | **Closed-loop Work Orders** | Create a work order straight from a Maintenance recommendation, track `open → in_progress → completed`. |
 | 📊 | **KPI Trends** | Snapshot history with per-metric line charts. |
-| 🔎 | **Global Search + CSV Export** | Search across equipment, incidents, documents, and lessons; export any table. |
+| 🔎 | **Global Search + CSV Export** | Search equipment, incidents, documents, and lessons; export any table. |
 | 🧪 | **AI Quality & Cost panel** | Per-agent confidence, latency, cost, and schema-validity tracking. |
 
-> 📌 For the honest, complete inventory — including **what isn't built and why** — see
-> **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**.
+> 📌 For the complete inventory — including **what isn't built and why** — see
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
 
 ---
 
@@ -274,6 +578,18 @@ Query → detect equipment tags
       → single Gemini synthesis call → cited answer
 ```
 
+### Knowledge graph ontology
+
+```
+Plant ─CONTAINS→ Area ─CONTAINS→ Equipment
+Equipment ─IS_TYPE→ AssetClass       Equipment ─MANUFACTURED_BY→ OEM
+Incident ─INVOLVED→ Equipment        WorkOrder ─PERFORMED_ON→ Equipment
+Inspection ─INSPECTED→ Equipment     Document ─HAS_MANUAL→ Equipment
+```
+
+Every node carries a denormalized `plant_id`, so all reads filter by plant — this is what makes the
+multi-tenant isolation airtight.
+
 ---
 
 ## 🧠 The Six AI Brains
@@ -290,9 +606,9 @@ risk level, citations, and a self-challenge.
 | **Compliance** | `COMPLIANCE` | Regulatory gap analysis, SOP checks, audit readiness |
 | **Lessons Learned** | `LESSONS_LEARNED` | Lesson extraction, cross-asset warnings, pattern detection |
 
-Every agent follows the same shape: **gather graph + vector context → one LLM reasoning call →
-structured JSON out.** The **Model Broker** routes each call cost-aware and falls back to local
-Ollama automatically if the primary model errors.
+All six share one shape: **gather graph + vector context → a single LLM reasoning call → structured
+JSON out.** The **Model Broker** routes each call cost-aware and falls back to local Ollama
+automatically if the primary model errors.
 
 ---
 
@@ -316,31 +632,21 @@ Docker Compose · Temporal (durable workflows) · OpenTelemetry → Jaeger (trac
 </td></tr>
 </table>
 
-### The knowledge graph ontology
-
-```
-Plant ─CONTAINS→ Area ─CONTAINS→ Equipment
-Equipment ─IS_TYPE→ AssetClass       Equipment ─MANUFACTURED_BY→ OEM
-Incident ─INVOLVED→ Equipment        WorkOrder ─PERFORMED_ON→ Equipment
-Inspection ─INSPECTED→ Equipment     Document ─HAS_MANUAL→ Equipment
-```
-
-Every node carries a denormalized `plant_id`, so all reads filter by plant — this is what makes the
-multi-tenant isolation airtight.
-
 ---
 
 ## 📁 Project Structure
 
 ```
 sureflow-ai/
-├── frontend/                   # Next.js 16 app
-│   └── src/
-│       ├── app/                # routes: / (landing), /login, /industrial/*
-│       ├── components/         # landing/ · industrial/ · layout/
-│       └── lib/                # api.ts (Axios+SSE) · store.ts · AuthContext.tsx
+├── README.md                   ← you are here: product, setup, troubleshooting
 │
-├── backend/                    # FastAPI app
+├── frontend/                   # Next.js 16 app (runs on the host)
+│   └── src/
+│       ├── app/                # / (landing) · /login · /industrial/*
+│       ├── components/         # landing/ · industrial/ · layout/
+│       └── lib/                # api.ts (Axios+SSE) · AuthContext.tsx · store.ts
+│
+├── backend/                    # FastAPI app (runs in Docker)
 │   ├── agents/                 # the six Brains
 │   ├── api/                    # routes.py · industrial_routes.py · hq_routes.py
 │   ├── core/                   # config · model_broker · memory · security · telemetry
@@ -348,29 +654,26 @@ sureflow-ai/
 │   ├── rag/                    # pgvector embeddings
 │   ├── models/                 # SQLAlchemy: memory · vault · auth
 │   ├── workflows/              # Temporal activities & workflows
-│   ├── evaluation/             # agent quality scoring
 │   ├── scripts/                # seed_industrial_data · seed_users · seed_kpi_snapshots
 │   └── .env.example            # ← copy to .env
 │
-├── docs/                       # 📚 all documentation (start at docs/README.md)
+├── docs/                       # supplementary documentation
 ├── observability/              # Prometheus + Grafana provisioning
 └── docker-compose.yml          # all nine services
 ```
 
 ---
 
-## 📚 Documentation
+## 📚 More Documentation
+
+Everything needed to **run** the product is in this file. These go deeper:
 
 | Doc | What's in it |
 |---|---|
-| **[docs/README.md](docs/README.md)** | 🗂️ Documentation index — **start here** |
-| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Full setup: Docker *and* local-dev paths, env config, seeding |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Fixes for the problems you're most likely to hit |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | 🎬 An 8–10 minute guided walkthrough for presenting |
-| [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | What's built, what isn't, and **why** |
+| [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | What's built, what isn't, and **why** each gap was deferred |
 | [docs/MULTI_LOCATION.md](docs/MULTI_LOCATION.md) | Multi-plant architecture and the isolation model |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What comes next, ranked by impact vs. effort |
-| [docs/architecture/](docs/architecture/) | Deep-dive system analysis |
 
 ---
 

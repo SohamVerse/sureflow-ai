@@ -8,9 +8,10 @@ interface KPICardProps {
   color: string;
   delay?: number;
   subtitle?: string;
+  loading?: boolean;
 }
 
-export function KPICard({ label, value, icon: Icon, color, delay = 0, subtitle }: KPICardProps) {
+export function KPICard({ label, value, icon: Icon, color, delay = 0, subtitle, loading = false }: KPICardProps) {
   const rgbMap: Record<string, string> = {
     '#6366f1': '99,102,241',
     '#06b6d4': '6,182,212',
@@ -37,8 +38,12 @@ export function KPICard({ label, value, icon: Icon, color, delay = 0, subtitle }
           <Icon size={18} style={{ color }} />
         </div>
       </div>
-      <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
+      <div className="text-3xl font-bold mb-1 h-9 flex items-center" style={{ color: 'var(--text-primary)' }}>
+        {loading ? (
+          <div className="skeleton h-8 w-16 rounded-md" />
+        ) : (
+          typeof value === 'number' ? value.toLocaleString() : value
+        )}
       </div>
       <div className="text-sm" style={{ color: 'var(--text-muted)' }}>{label}</div>
       {subtitle && (

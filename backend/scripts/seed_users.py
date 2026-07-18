@@ -26,9 +26,9 @@ LOCATIONS = [
 
 # (email, password, name, role, plant_id)
 USERS = [
-    ("cto@sureflow.ai", "admin123", "CTO (Global)", "cto", None),
-    ("karnataka@sureflow.ai", "plant123", "Karnataka Manager", "plant_manager", "PLANT-001"),
-    ("delhi@sureflow.ai", "plant123", "Delhi Manager", "plant_manager", "PLANT-002"),
+    ("cto@sureflow.ai", "Sureflow_CTO_2026!", "CTO (Global)", "cto", None),
+    ("karnataka@sureflow.ai", "Sureflow_Plant_2026!", "Karnataka Manager", "plant_manager", "PLANT-001"),
+    ("delhi@sureflow.ai", "Sureflow_Plant_2026!", "Delhi Manager", "plant_manager", "PLANT-002"),
 ]
 
 

@@ -23,8 +23,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Demo accounts for the login screen's quick-fill (credentials are verified by
 // the backend, not here — these are just display hints).
 export const DEMO_ACCOUNTS: Array<{ email: string; pass: string; label: string }> = [
-  { email: 'cto@sureflow.ai', pass: 'admin123', label: 'CTO (Global)' },
-  { email: 'karnataka@sureflow.ai', pass: 'plant123', label: 'Karnataka Manager (PLANT-001)' },
+  { email: 'cto@sureflow.ai', pass: 'Sureflow_CTO_2026!', label: 'CTO (Global)' },
+  { email: 'karnataka@sureflow.ai', pass: 'Sureflow_Plant_2026!', label: 'Karnataka Manager (PLANT-001)' },
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

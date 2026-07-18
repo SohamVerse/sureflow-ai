@@ -47,6 +47,7 @@ export default function IndustrialDashboard() {
           icon={Cpu}
           color="#a855f7"
           delay={0.1}
+          loading={!overview}
         />
         <KPICard
           label="Open Incidents"
@@ -54,6 +55,7 @@ export default function IndustrialDashboard() {
           icon={AlertTriangle}
           color="#ef4444"
           delay={0.15}
+          loading={!overview}
         />
         <KPICard
           label="Work Orders"
@@ -61,6 +63,7 @@ export default function IndustrialDashboard() {
           icon={Wrench}
           color="#f59e0b"
           delay={0.2}
+          loading={!overview}
         />
         <KPICard
           label="Lessons Learned"
@@ -68,6 +71,7 @@ export default function IndustrialDashboard() {
           icon={BookOpen}
           color="#22c55e"
           delay={0.25}
+          loading={!kpis}
         />
       </div>
 

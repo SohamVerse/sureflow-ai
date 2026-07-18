@@ -6,12 +6,30 @@ A guided walkthrough for presenting the Industrial Intelligence Platform (Petroc
 
 ## 0. Setup Checklist (do this before the room fills up)
 
-1. `docker-compose up -d` — PostgreSQL, Neo4j, Temporal, Jaeger.
-2. `ollama pull nomic-embed-text` (once).
-3. Backend: `cd backend && .venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000`
-4. Seed demo data (idempotent, safe to re-run): `.venv\Scripts\python.exe scripts/seed_industrial_data.py`
-5. Frontend: `cd frontend && npm run dev` → `http://localhost:3000/industrial`
-6. **OCR (optional but recommended for the upload demo):** install [Tesseract-OCR](https://github.com/UB-Mannheim/tesseract/wiki) and [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases/). If Tesseract isn't on your PATH, set in `backend/.env`:
+> Full setup detail lives in [`GETTING_STARTED.md`](./GETTING_STARTED.md); this is the pre-demo short list.
+
+1. **Start everything** — `docker compose up -d` brings up the backend, worker, Postgres, Neo4j, Temporal, and observability.
+2. **Rebuild first if you've touched backend code** — `docker compose build backend`. A stale image is the most likely way this demo embarrasses you.
+3. `ollama pull nomic-embed-text` (once) — needed for semantic search.
+4. **Seed the demo data** (idempotent, safe to re-run):
+   ```bash
+   docker compose exec backend python scripts/seed_industrial_data.py
+   docker compose exec backend python scripts/seed_users.py
+   docker compose exec backend python scripts/seed_kpi_snapshots.py
+   ```
+5. **Frontend:** `cd frontend && npm run dev` → `http://localhost:3000`
+6. **Sanity-check the login before the room fills up:**
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"cto@sureflow.ai","password":"Sureflow_CTO_2026!"}'
+   ```
+   Demo accounts: `cto@sureflow.ai / Sureflow_CTO_2026!` (global) ·
+   `karnataka@sureflow.ai` and `delhi@sureflow.ai`, both `Sureflow_Plant_2026!` (single-plant).
+   Present as the **CTO** — only that role can show the cross-plant HQ layer.
+7. **OCR** — already installed in the Docker image, so nothing to do on the Docker path. Only if you
+   run the backend locally on Windows: install [Tesseract-OCR](https://github.com/UB-Mannheim/tesseract/wiki)
+   and [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases/), then set in `backend/.env`:
    ```
    TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
    POPPLER_PATH=C:\poppler\Library\bin

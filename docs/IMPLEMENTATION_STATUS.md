@@ -195,14 +195,16 @@ OLLAMA_BASE_URL=http://localhost:11434
 ### Step 2: Start Infrastructure (Docker)
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This starts:
-- **PostgreSQL** (port 5432) — with pgvector extension
+- **PostgreSQL** (port 5433) — with pgvector extension
 - **Neo4j** (ports 7474/7687) — Knowledge Graph
 - **Temporal** (port 7233) — Workflow orchestration
 - **Jaeger** (port 16686) — Distributed tracing
+- **Prometheus** (9090) / **Grafana** (3001) — metrics and dashboards
+- **Backend** (port 8000) and the **Temporal worker**
 
 ### Step 3: Install Ollama Model
 

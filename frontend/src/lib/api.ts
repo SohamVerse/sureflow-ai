@@ -18,6 +18,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// If the backend rejects our token, drop the whole session rather than just the
+// token — leaving `sureflow_user` behind desyncs the route guards and bounces
+// the browser between /login and /industrial.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== 'undefined' && error?.response?.status === 401) {
+      localStorage.removeItem('sureflow_token');
+      localStorage.removeItem('sureflow_user');
+      localStorage.removeItem('sureflow_target_plant');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 // Bearer header for the raw fetch() SSE streams (axios interceptors don't cover them).
 function authHeaders(): Record<string, string> {
   if (typeof window !== 'undefined') {

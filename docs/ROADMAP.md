@@ -1,6 +1,6 @@
 # SureFlow OS — Product Roadmap & Future Enhancements
 
-What to build next to make SureFlow OS a more complete, credible, and differentiated industrial-intelligence product. Prioritized by **impact vs. effort**, and grounded in the current codebase (see [`README.md`](./README.md)). Multi-plant is tracked separately in [`MULTI_LOCATION.md`](./MULTI_LOCATION.md).
+What to build next to make SureFlow OS a more complete, credible, and differentiated industrial-intelligence product. Prioritized by **impact vs. effort**, and grounded in the current codebase (see [`README.md`](../README.md)). Multi-plant is tracked separately in [`MULTI_LOCATION.md`](./MULTI_LOCATION.md).
 
 > **The lens:** SureFlow's promise is *proactive* intelligence ("Downtime Down, Uptime Up"). Today the product is mostly **reactive & pull-based** (you open a dashboard and ask). The highest-value additions move it toward **proactive & push-based** (it tells *you*), and close the loop from *insight → action*.
 

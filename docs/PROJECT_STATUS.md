@@ -1,7 +1,7 @@
 # SureFlow OS — Project Status & Feature Inventory
 
 The single source of truth for **what's built, what's not, and why.** For deeper detail see the companion docs:
-[`README.md`](./README.md) (architecture & tech stack) · [`MULTI_LOCATION.md`](./MULTI_LOCATION.md) (multi-plant design) · [`ROADMAP.md`](./ROADMAP.md) (future enhancements).
+[`README.md`](../README.md) (architecture & tech stack) · [`MULTI_LOCATION.md`](./MULTI_LOCATION.md) (multi-plant design) · [`ROADMAP.md`](./ROADMAP.md) (future enhancements).
 
 > **What it is:** an agentic operations platform for heavy industry. Operators upload their documents (OEM manuals, SOPs, incident/inspection reports); SureFlow turns them into a live **Knowledge Graph + semantic memory** that a team of six specialized AI "Brains" reason over to deliver maintenance intelligence, compliance audits, lessons learned, proactive alerts, and a natural-language Copilot — across **multiple plants** with role-based access.
 
@@ -9,24 +9,28 @@ The single source of truth for **what's built, what's not, and why.** For deeper
 
 ## Running it
 
+Full instructions live in [`GETTING_STARTED.md`](./GETTING_STARTED.md). The short version:
+
 ```bash
-# 1. Infrastructure
-docker compose up -d db neo4j          # NeonDB is used by default; local pg optional
+cp backend/.env.example backend/.env    # then set GEMINI_API_KEY
+docker compose up -d                    # backend + worker + all infrastructure
 
-# 2. Backend (needs a valid GEMINI_API_KEY in backend/.env)
-cd backend
-.venv/Scripts/python scripts/seed_industrial_data.py   # 2 plants, 12 equipment (plant-stamped)
-.venv/Scripts/python scripts/seed_users.py             # CTO + 2 plant managers
-.venv/Scripts/python scripts/seed_kpi_snapshots.py     # synthetic KPI history for Trends
-.venv/Scripts/python -m uvicorn main:app --reload --port 8000
+docker compose exec backend python scripts/seed_industrial_data.py   # 2 plants, 12 equipment
+docker compose exec backend python scripts/seed_users.py             # CTO + 2 plant managers
+docker compose exec backend python scripts/seed_kpi_snapshots.py     # KPI history for Trends
 
-# 3. Frontend
 cd frontend && npm install && npm run dev   # http://localhost:3000
 ```
 
-**Demo logins:** `cto@sureflow.ai / admin123` (global) · `karnataka@sureflow.ai / plant123` (PLANT-001) · `delhi@sureflow.ai / plant123` (PLANT-002)
+**Demo logins** (source of truth: `backend/scripts/seed_users.py`):
 
-**Services:** Frontend `:3000` · API `:8000/api/v1` · Neo4j `:7474` · Jaeger `:16686` · Grafana `:3001`
+| Email | Password | Scope |
+|---|---|---|
+| `cto@sureflow.ai` | `Sureflow_CTO_2026!` | global |
+| `karnataka@sureflow.ai` | `Sureflow_Plant_2026!` | PLANT-001 |
+| `delhi@sureflow.ai` | `Sureflow_Plant_2026!` | PLANT-002 |
+
+**Services:** Frontend `:3000` · API `:8000/api/v1` · Neo4j `:7474` · Temporal UI `:8085` · Jaeger `:16686` · Grafana `:3001`
 
 ---
 

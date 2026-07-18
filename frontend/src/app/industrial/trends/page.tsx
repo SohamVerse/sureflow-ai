@@ -1,16 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { systemApi } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import { TrendChart } from '@/components/industrial/TrendChart';
 import { TrendingUp, Loader2 } from 'lucide-react';
 
 export default function TrendsPage() {
   const [snapshots, setSnapshots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { targetPlantId } = useAuth();
 
   useEffect(() => {
+    setLoading(true);
     systemApi.trends(180).then(d => { setSnapshots(d.snapshots); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+  }, [targetPlantId]);
 
   const labels = snapshots.map(s => s.date);
   const series = (key: string) => snapshots.map(s => s[key] ?? 0);
@@ -18,9 +21,9 @@ export default function TrendsPage() {
   const CHARTS: Array<{ title: string; key: string; color: string; good: 'up' | 'down' }> = [
     { title: 'Open Incidents', key: 'incidents', color: '#ef4444', good: 'down' },
     { title: 'Open Alerts', key: 'open_alerts', color: '#f59e0b', good: 'down' },
-    { title: 'Equipment Tracked', key: 'equipment', color: '#3b82f6', good: 'up' },
+    { title: 'Equipment Tracked', key: 'equipment', color: '#a855f7', good: 'up' },
     { title: 'Work Orders', key: 'work_orders', color: '#22c55e', good: 'up' },
-    { title: 'Inspections', key: 'inspections', color: '#06b6d4', good: 'up' },
+    { title: 'Inspections', key: 'inspections', color: '#a855f7', good: 'up' },
     { title: 'Lessons Captured', key: 'lessons', color: '#eab308', good: 'up' },
   ];
 

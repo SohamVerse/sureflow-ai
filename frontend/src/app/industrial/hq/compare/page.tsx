@@ -72,7 +72,7 @@ export default function ComparePlantsPage() {
     <div className="p-8 min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <div className="mb-8 animate-fade-in-up">
         <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          <BarChart3 size={28} className="inline mr-2" style={{ color: '#06b6d4' }} />
+          <BarChart3 size={28} className="inline mr-2" style={{ color: '#a855f7' }} />
           Compare<span className="gradient-text"> Plants</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>Benchmark locations side-by-side. Green marks the better value.</p>

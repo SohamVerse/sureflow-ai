@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { industrialApi } from '@/lib/api';
 import type { ComplianceResult } from '@/types';
 import { AgentReasoningPanel } from '@/components/industrial/AgentReasoningPanel';
@@ -11,6 +12,7 @@ import {
 
 export default function ComplianceDashboard() {
   const { industrialEquipment, fetchIndustrialEquipment } = useSureflowStore();
+  const { targetPlantId } = useAuth();
   const [scope, setScope] = useState('facility');
   const [areaId, setAreaId] = useState('');
   const [equipmentTag, setEquipmentTag] = useState('');
@@ -21,7 +23,7 @@ export default function ComplianceDashboard() {
 
   useEffect(() => {
     fetchIndustrialEquipment();
-  }, [fetchIndustrialEquipment]);
+  }, [fetchIndustrialEquipment, targetPlantId]);
 
   const areas = [...new Set(industrialEquipment.map(e => e.area_id))].sort();
 
@@ -71,7 +73,7 @@ export default function ComplianceDashboard() {
       {/* Audit Form */}
       <div className="industrial-card p-6 mb-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <h2 className="font-semibold text-lg mb-5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Play size={18} style={{ color: '#6366f1' }} />
+          <Play size={18} style={{ color: '#a855f7' }} />
           Run Compliance Audit
         </h2>
 

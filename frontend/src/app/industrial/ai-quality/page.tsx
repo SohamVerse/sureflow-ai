@@ -4,8 +4,8 @@ import { systemApi } from '@/lib/api';
 import { Gauge, Loader2, Clock, DollarSign, Activity, CheckCircle } from 'lucide-react';
 
 const AGENT_COLOR: Record<string, string> = {
-  DOC_INTELLIGENCE: '#3b82f6', KG_AGENT: '#a855f7', SEARCH_AGENT: '#14b8a6',
-  MAINTENANCE: '#f97316', LESSONS_LEARNED: '#eab308', COMPLIANCE: '#06b6d4',
+  DOC_INTELLIGENCE: '#a855f7', KG_AGENT: '#a855f7', SEARCH_AGENT: '#14b8a6',
+  MAINTENANCE: '#f97316', LESSONS_LEARNED: '#eab308', COMPLIANCE: '#a855f7',
 };
 
 export default function AIQualityPage() {
@@ -37,7 +37,7 @@ export default function AIQualityPage() {
           {/* Totals */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {[
-              { label: 'Total Agent Runs', value: totals.total_runs ?? 0, icon: Activity, color: '#6366f1' },
+              { label: 'Total Agent Runs', value: totals.total_runs ?? 0, icon: Activity, color: '#a855f7' },
               { label: 'Total LLM Cost', value: `$${(totals.total_cost ?? 0).toFixed(4)}`, icon: DollarSign, color: '#22c55e' },
               { label: 'Avg Latency', value: `${(totals.avg_latency_ms ?? 0).toLocaleString()} ms`, icon: Clock, color: '#f59e0b' },
             ].map((t, i) => (
@@ -55,7 +55,7 @@ export default function AIQualityPage() {
           <h2 className="font-semibold text-lg mb-4" style={{ color: 'var(--text-primary)' }}>Per-Agent Quality</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
             {data.agents.map((a: any) => {
-              const color = AGENT_COLOR[a.agent_id] || '#6366f1';
+              const color = AGENT_COLOR[a.agent_id] || '#a855f7';
               return (
                 <div key={a.agent_id} className="industrial-card p-5">
                   <div className="flex items-center gap-2 mb-4">

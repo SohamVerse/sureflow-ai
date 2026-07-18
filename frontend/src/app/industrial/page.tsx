@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { KPICard } from '@/components/industrial/KPICard';
 import { PlantHierarchyTree } from '@/components/industrial/PlantHierarchyTree';
 import {
@@ -14,13 +15,14 @@ export default function IndustrialDashboard() {
     industrialOverview, industrialKPIs, industrialHierarchy, industrialIncidents,
     fetchIndustrialOverview, fetchIndustrialKPIs, fetchIndustrialHierarchy, fetchIndustrialIncidents,
   } = useSureflowStore();
+  const { targetPlantId } = useAuth();
 
   useEffect(() => {
     fetchIndustrialOverview();
     fetchIndustrialKPIs();
     fetchIndustrialHierarchy();
     fetchIndustrialIncidents();
-  }, [fetchIndustrialOverview, fetchIndustrialKPIs, fetchIndustrialHierarchy, fetchIndustrialIncidents]);
+  }, [fetchIndustrialOverview, fetchIndustrialKPIs, fetchIndustrialHierarchy, fetchIndustrialIncidents, targetPlantId]);
 
   const overview = industrialOverview;
   const kpis = industrialKPIs;
@@ -43,7 +45,7 @@ export default function IndustrialDashboard() {
           label="Total Equipment"
           value={overview?.equipment ?? 0}
           icon={Cpu}
-          color="#3b82f6"
+          color="#a855f7"
           delay={0.1}
         />
         <KPICard
@@ -75,7 +77,7 @@ export default function IndustrialDashboard() {
         <div className="industrial-card p-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <Factory size={18} style={{ color: '#6366f1' }} />
+              <Factory size={18} style={{ color: '#a855f7' }} />
               Plant Hierarchy
             </h2>
           </div>
@@ -86,16 +88,16 @@ export default function IndustrialDashboard() {
         <div className="industrial-card p-6 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <Activity size={18} style={{ color: '#06b6d4' }} />
+              <Activity size={18} style={{ color: '#a855f7' }} />
               Knowledge Graph Stats
             </h2>
           </div>
           {overview ? (
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Plants', value: overview.plants, color: '#6366f1' },
-                { label: 'Areas', value: overview.areas, color: '#06b6d4' },
-                { label: 'Equipment', value: overview.equipment, color: '#3b82f6' },
+                { label: 'Plants', value: overview.plants, color: '#a855f7' },
+                { label: 'Areas', value: overview.areas, color: '#a855f7' },
+                { label: 'Equipment', value: overview.equipment, color: '#a855f7' },
                 { label: 'Incidents', value: overview.incidents, color: '#ef4444' },
                 { label: 'Work Orders', value: overview.work_orders, color: '#f59e0b' },
                 { label: 'Inspections', value: overview.inspections, color: '#22c55e' },
@@ -174,7 +176,7 @@ export default function IndustrialDashboard() {
                     background:
                       incident.severity === 'critical' ? '#ef4444' :
                       incident.severity === 'high' ? '#f59e0b' :
-                      incident.severity === 'medium' ? '#06b6d4' : '#22c55e',
+                      incident.severity === 'medium' ? '#a855f7' : '#22c55e',
                     boxShadow:
                       incident.severity === 'critical' ? '0 0 8px rgba(239,68,68,0.5)' : 'none',
                   }}
@@ -199,8 +201,8 @@ export default function IndustrialDashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
         {[
-          { href: '/industrial/copilot', label: 'Ask Copilot', icon: TrendingUp, desc: 'Chat with AI', color: '#6366f1' },
-          { href: '/industrial/equipment', label: 'Equipment', icon: Cpu, desc: 'Browse assets', color: '#3b82f6' },
+          { href: '/industrial/copilot', label: 'Ask Copilot', icon: TrendingUp, desc: 'Chat with AI', color: '#a855f7' },
+          { href: '/industrial/equipment', label: 'Equipment', icon: Cpu, desc: 'Browse assets', color: '#a855f7' },
           { href: '/industrial/upload', label: 'Upload Doc', icon: BookOpen, desc: 'Ingest documents', color: '#a855f7' },
           { href: '/industrial/maintenance', label: 'Run Analysis', icon: Wrench, desc: 'Maintenance AI', color: '#f59e0b' },
         ].map((action, i) => (

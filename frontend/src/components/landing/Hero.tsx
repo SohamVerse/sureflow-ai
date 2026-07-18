@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Zap } from 'lucide-react';
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ function ProtocolIcon6() {
    HERO SECTION — matches the reference image exactly
    ──────────────────────────────────────────────────────────────────────────── */
 export function HeroSection() {
+  const router = useRouter();
   const words = ["Clarity", "Confidence", "Control", "Velocity"];
   const [wordIndex, setWordIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -412,7 +414,7 @@ export function HeroSection() {
               display: 'inline-block',
             }}>
               {currentText}
-              <span style={{ 
+              <span style={{
                 color: '#a855f7',
                 fontWeight: 300,
                 WebkitTextFillColor: '#a855f7',
@@ -464,7 +466,7 @@ export function HeroSection() {
               </defs>
 
               {/* 1. BLACK SHADOW UNDERLAYS FIRST (renders at the bottom of the stack) */}
-              
+
               {/* Top Shadows */}
               <path className="draw-line-top" d="M 394 36 L 394 42 Q 390 52 379 52 L 300 52 Q 280 52 280 67 L 280 80 Q 280 95 260 95 L 50 95" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" transform="translate(0, 4)" style={{ filter: 'blur(3px)' }} />
               <path className="draw-line-top" d="M 406 36 L 406 42 Q 406 52 421 52 L 500 52 Q 520 52 520 67 L 520 80 Q 520 95 540 95 L 750 95" stroke="#000000" strokeWidth="6" fill="none" opacity="0.9" transform="translate(0, 4)" style={{ filter: 'blur(3px)' }} />
@@ -478,7 +480,7 @@ export function HeroSection() {
               <path className="draw-line-bottom" d="M 710 113 L 710 188 Q 710 200 698 200 L 440 200 Q 428 200 428 212 L 428 340" stroke="#000000" strokeWidth="8" fill="none" opacity="0.95" transform="translate(0, 2)" style={{ filter: 'blur(4px)' }} />
 
               {/* 2. COLORED FOREGROUND LINES (renders on top of all shadows) */}
-              
+
               {/* Top Lines */}
               <path className="draw-line-top" d="M 394 36 L 394 42 Q 390 52 379 52 L 300 52 Q 280 52 280 67 L 280 80 Q 280 95 260 95 L 50 95" stroke="url(#split-left)" strokeWidth="2" fill="none" />
               <path className="draw-line-top" d="M 406 36 L 406 42 Q 406 52 421 52 L 500 52 Q 520 52 520 67 L 520 80 Q 520 95 540 95 L 750 95" stroke="url(#split-right)" strokeWidth="2" fill="none" />
@@ -521,7 +523,7 @@ export function HeroSection() {
               <path className="draw-line-bottom" d="M 96 178 L 96 240 L 148 240 L 148 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
               <path className="draw-line-bottom" d="M 160 178 L 160 240 L 152 240 L 152 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
               <path className="draw-line-bottom" d="M 224 178 L 224 240 L 156 240 L 156 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
-              
+
               <path className="draw-line-bottom" d="M 96 233 L 96 248 L 164 248 L 164 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
               <path className="draw-line-bottom" d="M 160 233 L 160 252 L 168 252 L 168 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
               <path className="draw-line-bottom" d="M 224 233 L 224 248 L 172 248 L 172 340" stroke="#000000" strokeWidth="5" fill="none" opacity="0.9" style={{ filter: 'blur(3px)' }} />
@@ -530,7 +532,7 @@ export function HeroSection() {
               <path className="draw-line-bottom" d="M 96 178 L 96 240 L 148 240 L 148 340" stroke="#e81cff" strokeWidth="1.5" fill="none" />
               <path className="draw-line-bottom" d="M 160 178 L 160 240 L 152 240 L 152 340" stroke="#10b981" strokeWidth="1.5" fill="none" />
               <path className="draw-line-bottom" d="M 224 178 L 224 240 L 156 240 L 156 340" stroke="#f97316" strokeWidth="1.5" fill="none" />
-              
+
               <path className="draw-line-bottom" d="M 96 233 L 96 248 L 164 248 L 164 340" stroke="#06b6d4" strokeWidth="1.5" fill="none" />
               <path className="draw-line-bottom" d="M 160 233 L 160 252 L 168 252 L 168 340" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
               <path className="draw-line-bottom" d="M 224 233 L 224 248 L 172 248 L 172 340" stroke="#8b5cf6" strokeWidth="1.5" fill="none" />
@@ -552,8 +554,10 @@ export function HeroSection() {
               cursor: 'pointer',
               zIndex: 10,
               boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(255,255,255,0.15)'
-            }}>
-              Get a Demo
+            }}
+            onClick={() => router.push('/login')}
+            >
+              Start Now
             </button>
 
             {/* Center Brand Area (overlapping the curves perfectly) */}

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSureflowStore } from '@/lib/store';
+import { useAuth } from '@/lib/AuthContext';
 import { industrialApi } from '@/lib/api';
 import type { LessonsLearnedResult } from '@/types';
 import { AgentReasoningPanel } from '@/components/industrial/AgentReasoningPanel';
@@ -24,6 +25,7 @@ const TREND_ICON: Record<string, typeof TrendingUp> = {
 
 export default function LessonsLearnedDashboard() {
   const { industrialEquipment, fetchIndustrialEquipment } = useSureflowStore();
+  const { targetPlantId } = useAuth();
   const [incidentText, setIncidentText] = useState('');
   const [equipmentTag, setEquipmentTag] = useState('');
   const [incidentId, setIncidentId] = useState('');
@@ -34,7 +36,7 @@ export default function LessonsLearnedDashboard() {
 
   useEffect(() => {
     fetchIndustrialEquipment();
-  }, [fetchIndustrialEquipment]);
+  }, [fetchIndustrialEquipment, targetPlantId]);
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -66,7 +68,7 @@ export default function LessonsLearnedDashboard() {
       {/* Analysis Form */}
       <div className="industrial-card p-6 mb-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <h2 className="font-semibold text-lg mb-5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Play size={18} style={{ color: '#6366f1' }} />
+          <Play size={18} style={{ color: '#a855f7' }} />
           Run Lessons Learned Analysis
         </h2>
 
@@ -273,7 +275,7 @@ export default function LessonsLearnedDashboard() {
           {result.patterns && result.patterns.length > 0 && (
             <div className="industrial-card p-6">
               <h3 className="font-semibold text-lg mb-5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <TrendingUp size={18} style={{ color: '#3b82f6' }} />
+                <TrendingUp size={18} style={{ color: '#a855f7' }} />
                 Recurring Patterns
                 <span className="badge badge-operational">{result.patterns.length}</span>
               </h3>

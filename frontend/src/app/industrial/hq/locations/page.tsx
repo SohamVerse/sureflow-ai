@@ -68,7 +68,7 @@ export default function LocationsPage() {
     <div className="p-8 min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <div className="mb-8 animate-fade-in-up">
         <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          <Building2 size={28} className="inline mr-2" style={{ color: '#6366f1' }} />
+          <Building2 size={28} className="inline mr-2" style={{ color: '#a855f7' }} />
           Manage<span className="gradient-text"> Locations</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>Onboard a new plant and (optionally) invite its first manager.</p>

@@ -10,7 +10,7 @@ interface WO {
 
 const STATUSES = ['open', 'planned', 'in_progress', 'completed', 'cancelled'];
 const STATUS_COLOR: Record<string, string> = {
-  open: '#3b82f6', planned: '#a855f7', in_progress: '#f59e0b', completed: '#22c55e', cancelled: '#64748b',
+  open: '#a855f7', planned: '#a855f7', in_progress: '#f59e0b', completed: '#22c55e', cancelled: '#64748b',
 };
 
 export default function WorkOrdersPage() {
@@ -83,11 +83,11 @@ export default function WorkOrdersPage() {
                   value={w.status}
                   onChange={e => changeStatus(w.wo_id, e.target.value)}
                   className="pl-3 pr-8 py-2 rounded-lg text-xs font-semibold outline-none appearance-none cursor-pointer capitalize"
-                  style={{ background: `${STATUS_COLOR[w.status] || '#3b82f6'}1f`, color: STATUS_COLOR[w.status] || '#3b82f6', border: `1px solid ${STATUS_COLOR[w.status] || '#3b82f6'}44` }}
+                  style={{ background: `${STATUS_COLOR[w.status] || '#a855f7'}1f`, color: STATUS_COLOR[w.status] || '#a855f7', border: `1px solid ${STATUS_COLOR[w.status] || '#a855f7'}44` }}
                 >
                   {STATUSES.map(s => <option key={s} value={s} style={{ background: '#111827', color: '#fff' }}>{s.replace('_', ' ')}</option>)}
                 </select>
-                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: STATUS_COLOR[w.status] || '#3b82f6' }} />
+                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: STATUS_COLOR[w.status] || '#a855f7' }} />
               </div>
             </div>
           ))}

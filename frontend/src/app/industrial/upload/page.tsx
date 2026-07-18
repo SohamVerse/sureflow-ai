@@ -221,7 +221,7 @@ export default function DocumentUploadPage() {
                     {status === 'done' ? (
                       <CheckCircle size={16} style={{ color: '#22c55e' }} />
                     ) : status === 'active' ? (
-                      <Loader2 size={16} className="animate-spin" style={{ color: '#6366f1' }} />
+                      <Loader2 size={16} className="animate-spin" style={{ color: '#a855f7' }} />
                     ) : (
                       <Icon size={16} style={{ color: 'var(--text-muted)' }} />
                     )}
@@ -252,9 +252,9 @@ export default function DocumentUploadPage() {
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {[
-                  { label: 'Pages Extracted', value: result.pages_extracted, color: '#3b82f6' },
+                  { label: 'Pages Extracted', value: result.pages_extracted, color: '#a855f7' },
                   { label: 'Entities Found', value: result.entities_found, color: '#a855f7' },
-                  { label: 'Chunks Embedded', value: result.chunks_embedded, color: '#06b6d4' },
+                  { label: 'Chunks Embedded', value: result.chunks_embedded, color: '#a855f7' },
                   { label: 'Graph Nodes', value: result.graph_nodes_created, color: '#22c55e' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>

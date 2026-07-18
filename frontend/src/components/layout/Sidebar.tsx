@@ -97,12 +97,12 @@ export function Sidebar() {
         style={{
           color: isActive ? 'white' : 'var(--text-secondary)',
           background: isActive
-            ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.1))'
+            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.05))'
             : 'transparent',
-          borderLeft: isActive ? '2px solid #6366f1' : '2px solid transparent',
+          borderLeft: isActive ? '2px solid #a855f7' : '2px solid transparent',
         }}
       >
-        <Icon size={16} style={{ color: isActive ? '#818cf8' : 'var(--text-muted)' }} />
+        <Icon size={16} style={{ color: isActive ? '#a855f7' : 'var(--text-muted)' }} />
         <span className="flex-1">{label}</span>
         {href === '/industrial/alerts' && alertCount > 0 && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#ef4444', color: 'white', minWidth: '18px', textAlign: 'center' }}>
@@ -126,7 +126,7 @@ export function Sidebar() {
       <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
         <div
           className="flex items-center justify-center w-9 h-9 rounded-xl"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+          style={{ background: 'linear-gradient(135deg, #a855f7, #6d28d9)' }}
         >
           <Zap size={18} color="white" />
         </div>

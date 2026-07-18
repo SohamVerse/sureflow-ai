@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sureflow Agentic OS',
+  title: 'Sureflow',
   description: 'Local multi-agent company management software powered by Ollama LLMs',
 };
 

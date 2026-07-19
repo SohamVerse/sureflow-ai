@@ -4,14 +4,11 @@
 
 # SureFlow AI
 
-### The Agentic Operating System for Heavy Industry
+### Intelligent Multi-Agent Knowledge Engine for Industrial Operations
 
-**Downtime Down, Uptime Up.**
+**Complexity Down, Clarity Up.**
 
-Operators upload their raw plant documents — OEM manuals, SOPs, incident reports, inspection records.
-SureFlow turns them into a live **Knowledge Graph + semantic memory** that six specialized AI agents
-reason over to deliver maintenance intelligence, compliance audits, lessons learned, and a
-natural-language Copilot.
+SureFlow transforms unstructured plant documents—such as OEM manuals, SOPs, incident logs, and inspection sheets—into a live, unified **Knowledge Graph** (Neo4j) and **semantic vector store** (pgvector). Six specialized, cooperative AI agents reason over this dual-memory system to deliver predictive maintenance intelligence, automated compliance audits, proactive risk alerts, and a natural-language Copilot.
 
 Vercel : https://sureflow-ai-xz25.vercel.app
 <br/>

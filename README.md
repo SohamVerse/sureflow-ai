@@ -676,7 +676,7 @@ This repository contains **proprietary software** developed and owned by **Team 
 
 > **⚠️ NOTICE:** Unauthorized copying, reproduction, modification, distribution, reverse engineering, sublicensing, or commercial use of this software — in whole or in part — is strictly prohibited without prior written permission from Team Hogwart. Violations may result in legal action to the fullest extent permitted by applicable law.
 >
-> For licensing inquiries, contact: **[team-email@placeholder.com]**
+> For licensing inquiries, contact: **[17nyasa.parikh@gmail.com]**
 
 | Document | Purpose |
 |---|---|

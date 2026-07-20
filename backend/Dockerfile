@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     build-essential \
     libpq-dev \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -19,7 +20,7 @@ COPY . .
 
 EXPOSE 8000
 
-# Copy and set up startup script (runs migrations then starts server)
+# Fix line endings and set up startup script (runs migrations then starts server)
 COPY start.sh .
-RUN chmod +x start.sh
+RUN dos2unix start.sh && chmod +x start.sh
 CMD ["./start.sh"]

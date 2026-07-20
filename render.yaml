@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     healthCheckPath: /
     envVars:
       # -- PostgreSQL (NeonDB — set manually in dashboard) ---------------------
@@ -15,7 +15,7 @@ services:
       - key: NEO4J_URI
         sync: false
       - key: NEO4J_USER
-        value: neo4j
+        value: 3ced23e8
       - key: NEO4J_PASSWORD
         sync: false
 

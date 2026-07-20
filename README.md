@@ -664,19 +664,19 @@ Everything needed to **run** the product is in this file. These go deeper:
 
 </div>
 
-This repository contains **proprietary software** developed and owned by **Team Hogwart**.
+This repository contains **proprietary software** developed and owned by **Team Hogwarts_House**.
 
-- **Ownership.** All source code, documentation, architecture, AI workflows, prompts, APIs, database schema, branding, and related intellectual property are the exclusive property of Team Hogwart, unless otherwise specified by the official terms and conditions of ET AI Hackathon 2.0.
+- **Ownership.** All source code, documentation, architecture, AI workflows, prompts, APIs, database schema, branding, and related intellectual property are the exclusive property of Team Hogwarts_House, unless otherwise specified by the official terms and conditions of ET AI Hackathon 2.0.
 - **Hackathon Context.** This project was created during **ET AI Hackathon 2.0**. Participation in the hackathon does not, by itself, transfer ownership of the source code or intellectual property to any third party.
 - **Confidentiality.** The source code is **confidential and proprietary**. Viewing this repository does not grant permission to copy, modify, redistribute, reverse engineer, or commercially use any portion of the project.
-- **Protected Assets.** All trademarks, branding, documentation, architecture, AI workflows, prompts, database schema, APIs, UI/UX designs, and source code are protected intellectual property belonging to Team Hogwart.
+- **Protected Assets.** All trademarks, branding, documentation, architecture, AI workflows, prompts, database schema, APIs, UI/UX designs, and source code are protected intellectual property belonging to Team Hogwarts_House.
 - **No Open-Source License.** This project is **not** licensed under MIT, Apache, GPL, or any other open-source license.
 
 ### Legal Notice
 
-> **⚠️ NOTICE:** Unauthorized copying, reproduction, modification, distribution, reverse engineering, sublicensing, or commercial use of this software — in whole or in part — is strictly prohibited without prior written permission from Team Hogwart. Violations may result in legal action to the fullest extent permitted by applicable law.
+> **⚠️ NOTICE:** Unauthorized copying, reproduction, modification, distribution, reverse engineering, sublicensing, or commercial use of this software — in whole or in part — is strictly prohibited without prior written permission from Team Hogwarts_House. Violations may result in legal action to the fullest extent permitted by applicable law.
 >
-> For licensing inquiries, contact: **[17nyasa.parikh@gmail.com]**
+> For licensing inquiries, contact: **[17nyasa.parikh@gmail.com]** or **[atharvashewale361@gmail.com]**
 
 | Document | Purpose |
 |---|---|
@@ -692,16 +692,16 @@ This repository contains **proprietary software** developed and owned by **Team 
 
 ---
 
-© 2026 **Team Hogwart** · All Rights Reserved.
+© 2026 **Team Hogwarts_House** · All Rights Reserved.
 
 Developed during **ET AI Hackathon 2.0**.
 
-*This repository contains confidential and proprietary software owned by Team Hogwart.*
+*This repository contains confidential and proprietary software owned by Team Hogwarts_House.*
 *Unauthorized copying, reproduction, modification, distribution, reverse engineering,*
 *or commercial use is prohibited without prior written permission.*
 
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-darkred?style=flat-square)](./LICENSE)
-[![Team Hogwart](https://img.shields.io/badge/Team-Hogwart-6C3483?style=flat-square)](./NOTICE)
+[![Team Hogwarts_House](https://img.shields.io/badge/Team-Hogwarts__House-6C3483?style=flat-square)](./NOTICE)
 [![ET AI Hackathon 2.0](https://img.shields.io/badge/ET_AI_Hackathon-2.0-E67E22?style=flat-square)](./NOTICE)
 
 ---

@@ -1,0 +1,164 @@
+PROPRIETARY SOFTWARE LICENSE AGREEMENT
+
+Copyright © 2026 Team Hogwart. All Rights Reserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT — READ CAREFULLY BEFORE ACCESSING, COPYING, OR USING THIS SOFTWARE
+
+This Proprietary Software License Agreement ("Agreement") is a legal agreement
+between you (whether an individual or a single entity) and Team Hogwart
+("Licensor", "Owner", "We", or "Us"), governing your access to and use of the
+SureFlow AI software, including all associated source code, documentation,
+assets, data schemas, AI workflows, prompts, APIs, UI/UX designs, branding
+materials, and related intellectual property (collectively, the "Software").
+
+By accessing, downloading, cloning, forking, viewing, or otherwise interacting
+with this repository or any part of the Software, you acknowledge that you have
+read this Agreement, understand it, and agree to be bound by its terms. If you
+do not agree to these terms, you must not access or use the Software in any
+manner whatsoever.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. OWNERSHIP AND INTELLECTUAL PROPERTY
+
+   1.1  Team Hogwart is and shall remain the sole and exclusive owner of all
+        right, title, and interest in and to the Software, including all
+        intellectual property rights therein — including but not limited to
+        copyright, trade secrets, patents (if any), trademarks, and proprietary
+        information.
+
+   1.2  This Software was developed during the ET AI Hackathon 2.0. Participation
+        in such hackathon does not, by itself, transfer any ownership of the
+        Software or the intellectual property it embodies to any third party,
+        including hackathon organizers, sponsors, judges, or other participants,
+        unless otherwise explicitly specified by the official terms and conditions
+        of ET AI Hackathon 2.0 and agreed upon in writing.
+
+   1.3  All trademarks, service marks, trade names, logos, and branding elements
+        associated with the Software — including "SureFlow AI" and "Team Hogwart"
+        — are the exclusive property of Team Hogwart.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. RESTRICTIONS
+
+   2.1  NO LICENSE GRANTED.  No license, right, or permission — express,
+        implied, or by estoppel — is granted to any person or entity with
+        respect to the Software, except as expressly set forth in a separate
+        written agreement signed by an authorized representative of Team Hogwart.
+
+   2.2  PROHIBITED ACTS.  Unless you have received prior, explicit, written
+        permission from Team Hogwart, you are strictly prohibited from:
+
+        (a) Copying, reproducing, or duplicating any portion of the Software,
+            in whole or in part, by any means;
+
+        (b) Modifying, adapting, translating, or creating derivative works based
+            on the Software or any portion thereof;
+
+        (c) Distributing, publishing, transmitting, transferring, sublicensing,
+            leasing, lending, or otherwise making the Software available to any
+            third party;
+
+        (d) Reverse engineering, decompiling, disassembling, decrypting, or
+            otherwise attempting to derive the source code, architecture, or
+            underlying algorithms of any compiled or obfuscated portion of the
+            Software;
+
+        (e) Selling, commercializing, licensing, or otherwise exploiting the
+            Software or any portion thereof for commercial gain;
+
+        (f) Removing, obscuring, altering, or circumventing any proprietary
+            notices, labels, watermarks, or copyright markings contained in or
+            on the Software;
+
+        (g) Using the Software or any component thereof to build, train, or
+            derive a competing product, service, or AI model;
+
+        (h) Incorporating the Software or any portion thereof into another
+            product, system, or service without express written authorization.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. CONFIDENTIALITY
+
+   3.1  The Software and all information contained herein is confidential and
+        proprietary to Team Hogwart.
+
+   3.2  Any person who gains access to this Software — whether intentionally or
+        inadvertently — acknowledges its confidential nature and agrees not to
+        disclose, divulge, or publish any information about the Software's source
+        code, architecture, AI workflows, data schemas, APIs, prompts, or
+        business logic to any third party without prior written consent from
+        Team Hogwart.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. DISCLAIMER OF WARRANTIES
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, TITLE, OR NON-INFRINGEMENT. IN NO EVENT
+   SHALL TEAM HOGWART BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE, EVEN IF ADVISED OF
+   THE POSSIBILITY OF SUCH DAMAGES.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. ENFORCEMENT AND LEGAL ACTION
+
+   5.1  Any unauthorized use, copying, reproduction, modification, distribution,
+        reverse engineering, or commercial exploitation of this Software —
+        whether in whole or in part — constitutes a violation of applicable
+        intellectual property laws and may result in civil and/or criminal
+        liability to the fullest extent permitted by applicable law.
+
+   5.2  Team Hogwart reserves the right to seek injunctive relief, monetary
+        damages, and any other remedy available at law or in equity for any
+        breach of this Agreement.
+
+   5.3  Team Hogwart may, at its sole discretion, pursue legal action against
+        any individual or entity found to be in violation of this Agreement,
+        without prior notice.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. GOVERNING LAW
+
+   This Agreement shall be governed by and construed in accordance with
+   applicable law. Any disputes arising under or in connection with this
+   Agreement shall be resolved in the appropriate jurisdiction as determined
+   by Team Hogwart.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. SEVERABILITY
+
+   If any provision of this Agreement is held to be invalid, illegal, or
+   unenforceable, the remaining provisions shall continue in full force and
+   effect.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. LICENSING INQUIRIES
+
+   If you are interested in obtaining a license to use, deploy, integrate, or
+   commercialize this Software or any of its components, please reach out to
+   Team Hogwart through the following channels:
+
+        Email   :  [17nyasa.parikh@gmail.com]
+
+   All licensing requests must be made in writing and will be evaluated on a
+   case-by-case basis at the sole discretion of Team Hogwart.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Copyright © 2026 Team Hogwart. All Rights Reserved.
+
+SureFlow AI — Intelligent Multi-Agent Knowledge Engine for Industrial Operations
+Developed during ET AI Hackathon 2.0.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

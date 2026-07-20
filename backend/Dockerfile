@@ -20,4 +20,6 @@ COPY . .
 EXPOSE 8000
 
 # Default command is to start the FastAPI application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use shell form so Render's dynamic $PORT env var is expanded at runtime.
+# Falls back to 8000 for local Docker usage.
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

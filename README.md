@@ -21,6 +21,15 @@ Vercel : https://sureflow-ai-xz25.vercel.app
 ![Postgres](https://img.shields.io/badge/pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-darkred?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](./LICENSE)
+[![Copyright](https://img.shields.io/badge/Copyright-%C2%A9_2026_Team_Hogwart-6C3483?style=for-the-badge)](./NOTICE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-crimson?style=for-the-badge&logo=shieldsdotio&logoColor=white)](./SECURITY.md)
+[![Version](https://img.shields.io/badge/Version-2.0.0-2E86AB?style=for-the-badge)](./NOTICE)
+![Build](https://img.shields.io/badge/Build-Passing-28A745?style=for-the-badge&logo=githubactions&logoColor=white)
+[![Team Hogwart](https://img.shields.io/badge/Team-Hogwart-4A235A?style=for-the-badge)](./NOTICE)
+[![ET AI Hackathon 2.0](https://img.shields.io/badge/ET_AI_Hackathon-2.0-E67E22?style=for-the-badge&logo=rocket&logoColor=white)](./NOTICE)
+![Last Updated](https://img.shields.io/badge/Last_Updated-July_2026-17A589?style=for-the-badge)
+
 </div>
 
 ---
@@ -33,7 +42,7 @@ Vercel : https://sureflow-ai-xz25.vercel.app
 **[🔧 Troubleshooting](#-troubleshooting)** · **[Features](#-features)** ·
 **[Architecture](#-architecture)** · **[The Six AI Brains](#-the-six-ai-brains)** ·
 **[Tech Stack](#-tech-stack)** · **[Project Structure](#-project-structure)** ·
-**[More Docs](#-more-documentation)**
+**[More Docs](#-more-documentation)** · **[License & IP](#-license--intellectual-property)**
 
 ---
 
@@ -624,6 +633,7 @@ Everything needed to **run** the product is in this file. These go deeper:
 
 | Doc | What's in it |
 |---|---|
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 🚀 **Full production deployment guide** — Render + Neo4j AuraDB + Vercel |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | 🎬 An 8–10 minute guided walkthrough for presenting |
 | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | What's built, what isn't, and **why** each gap was deferred |
 | [docs/MULTI_LOCATION.md](docs/MULTI_LOCATION.md) | Multi-plant architecture and the isolation model |
@@ -636,5 +646,64 @@ Everything needed to **run** the product is in this file. These go deeper:
 **SureFlow AI** — built for the ET Gen AI 2.0 Hackathon 🏆
 
 *Turning shelf-ware documents into operating intelligence.*
+
+</div>
+
+---
+
+## 🔐 License & Intellectual Property
+
+<div align="center">
+
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-darkred?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](./LICENSE)
+[![Copyright](https://img.shields.io/badge/Copyright-%C2%A9_2026_Team_Hogwart-6C3483?style=for-the-badge)](./NOTICE)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-crimson?style=for-the-badge&logo=shieldsdotio&logoColor=white)](./SECURITY.md)
+[![Version](https://img.shields.io/badge/Version-2.0.0-2E86AB?style=for-the-badge)](./NOTICE)
+[![Team Hogwart](https://img.shields.io/badge/Team-Hogwart-4A235A?style=for-the-badge)](./NOTICE)
+[![ET AI Hackathon 2.0](https://img.shields.io/badge/ET_AI_Hackathon-2.0-E67E22?style=for-the-badge)](./NOTICE)
+
+</div>
+
+This repository contains **proprietary software** developed and owned by **Team Hogwart**.
+
+- **Ownership.** All source code, documentation, architecture, AI workflows, prompts, APIs, database schema, branding, and related intellectual property are the exclusive property of Team Hogwart, unless otherwise specified by the official terms and conditions of ET AI Hackathon 2.0.
+- **Hackathon Context.** This project was created during **ET AI Hackathon 2.0**. Participation in the hackathon does not, by itself, transfer ownership of the source code or intellectual property to any third party.
+- **Confidentiality.** The source code is **confidential and proprietary**. Viewing this repository does not grant permission to copy, modify, redistribute, reverse engineer, or commercially use any portion of the project.
+- **Protected Assets.** All trademarks, branding, documentation, architecture, AI workflows, prompts, database schema, APIs, UI/UX designs, and source code are protected intellectual property belonging to Team Hogwart.
+- **No Open-Source License.** This project is **not** licensed under MIT, Apache, GPL, or any other open-source license.
+
+### Legal Notice
+
+> **⚠️ NOTICE:** Unauthorized copying, reproduction, modification, distribution, reverse engineering, sublicensing, or commercial use of this software — in whole or in part — is strictly prohibited without prior written permission from Team Hogwart. Violations may result in legal action to the fullest extent permitted by applicable law.
+>
+> For licensing inquiries, contact: **[team-email@placeholder.com]**
+
+| Document | Purpose |
+|---|---|
+| [`LICENSE`](./LICENSE) | Proprietary Software License Agreement |
+| [`NOTICE`](./NOTICE) | Ownership & confidentiality notice |
+| [`SECURITY.md`](./SECURITY.md) | Responsible vulnerability disclosure policy |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Internal contributor guidelines |
+| [`docs/COPYRIGHT_HEADERS.md`](./docs/COPYRIGHT_HEADERS.md) | Source file copyright header templates |
+
+---
+
+<div align="center">
+
+---
+
+© 2026 **Team Hogwart** · All Rights Reserved.
+
+Developed during **ET AI Hackathon 2.0**.
+
+*This repository contains confidential and proprietary software owned by Team Hogwart.*
+*Unauthorized copying, reproduction, modification, distribution, reverse engineering,*
+*or commercial use is prohibited without prior written permission.*
+
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-darkred?style=flat-square)](./LICENSE)
+[![Team Hogwart](https://img.shields.io/badge/Team-Hogwart-6C3483?style=flat-square)](./NOTICE)
+[![ET AI Hackathon 2.0](https://img.shields.io/badge/ET_AI_Hackathon-2.0-E67E22?style=flat-square)](./NOTICE)
+
+---
 
 </div>

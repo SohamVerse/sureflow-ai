@@ -19,7 +19,7 @@ COPY . .
 
 EXPOSE 8000
 
-# Default command is to start the FastAPI application
-# Use shell form so Render's dynamic $PORT env var is expanded at runtime.
-# Falls back to 8000 for local Docker usage.
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Copy and set up startup script (runs migrations then starts server)
+COPY start.sh .
+RUN chmod +x start.sh
+CMD ["./start.sh"]
